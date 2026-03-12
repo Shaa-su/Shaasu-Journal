@@ -17,6 +17,12 @@ public class MainActivity extends AppCompatActivity {
         
         // Set up logout button click listener
         logoutButton.setOnClickListener(v -> handleLogout());
+        
+        // Find create goal button
+        Button createGoalButton = findViewById(R.id.creategoal);
+        
+        // Set up create goal button click listener
+        createGoalButton.setOnClickListener(v -> handleCreateGoal());
     }
     
     private void handleLogout() {
@@ -24,5 +30,11 @@ public class MainActivity extends AppCompatActivity {
         Intent intent = new Intent(MainActivity.this, LoginActivity.class);
         startActivity(intent);
         finish(); // Close MainActivity
+    }
+    
+    private void handleCreateGoal() {
+        // Navigate to CalendarActivity
+        Intent intent = new Intent(MainActivity.this, CalendarActivity.class);
+        startActivity(intent);
     }
 }

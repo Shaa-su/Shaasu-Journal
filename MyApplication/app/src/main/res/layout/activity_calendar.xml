@@ -3,33 +3,26 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:padding="16dp"
-    android:gravity="center">
+    android:padding="16dp">
 
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Main Menu"
+        android:text="Create Story/Goal"
         android:textSize="26sp"
         android:gravity="center"
         android:layout_marginBottom="32dp" />
 
-    <Button
-        android:id="@+id/logoutButton"
+    <CalendarView
+        android:id="@+id/calendarView"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Logout" />
+        android:layout_marginBottom="32dp" />
 
     <Button
-        android:id="@+id/creategoal"
+        android:id="@+id/backButton"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Create Story/Goal" />
-
-    <Button
-        android:id="@+id/existingstory"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Stories" />
+        android:text="Back" />
 
 </LinearLayout>
