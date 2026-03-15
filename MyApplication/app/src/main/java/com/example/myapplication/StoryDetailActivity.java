@@ -381,8 +381,8 @@ public class StoryDetailActivity extends AppCompatActivity {
     private SpannableStringBuilder parseStoryWithImages(String storyWithPlaceholders) {
         SpannableStringBuilder result = new SpannableStringBuilder();
         
-        // Pattern to match [IMG:base64data]
-        Pattern pattern = Pattern.compile("\\[IMG:(.+?)\\]");
+        // Pattern to match [IMG:base64data] with DOTALL flag to handle newlines
+        Pattern pattern = Pattern.compile("\\[IMG:(.+?)\\]", Pattern.DOTALL);
         Matcher matcher = pattern.matcher(storyWithPlaceholders);
         
         int lastIndex = 0;
@@ -400,6 +400,9 @@ public class StoryDetailActivity extends AppCompatActivity {
                 Bitmap compressedBitmap = compressImage(bitmap);
                 ImageSpan imageSpan = new ImageSpan(this, compressedBitmap);
                 result.setSpan(imageSpan, insertPosition, insertPosition + 1, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            } else {
+                // If decoding failed, keep the placeholder text as-is
+                result.append(matcher.group(0));
             }
             
             lastIndex = matcher.end();

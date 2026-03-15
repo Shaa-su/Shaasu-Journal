@@ -174,13 +174,13 @@ public class FloatingActionButton extends View {
         // Update menu button positions based on animation value
         float distance = expandedDistance * expandedAnimationValue;
         
-        // Image button (top)
-        menuButtons[IMAGE_BUTTON].x = mainFabX;
-        menuButtons[IMAGE_BUTTON].y = mainFabY - distance;
+        // Image button (left)
+        menuButtons[IMAGE_BUTTON].x = mainFabX - distance;
+        menuButtons[IMAGE_BUTTON].y = mainFabY;
         
-        // Goals button (bottom)
-        menuButtons[GOALS_BUTTON].x = mainFabX;
-        menuButtons[GOALS_BUTTON].y = mainFabY - (distance * 0.5f);
+        // Goals button (right)
+        menuButtons[GOALS_BUTTON].x = mainFabX + distance;
+        menuButtons[GOALS_BUTTON].y = mainFabY;
         
         // Draw each menu button
         for (MenuButton button : menuButtons) {
@@ -202,23 +202,23 @@ public class FloatingActionButton extends View {
                 float touchX = event.getRawX();
                 float touchY = event.getRawY() - statusBarHeight;
                 
+                // Check if touching any menu button first (when expanded)
+                if (isExpanded && expandedAnimationValue > 0.2f) {
+                    for (int i = 0; i < menuButtons.length; i++) {
+                        MenuButton button = menuButtons[i];
+                        float distanceToButton = distance(touchX, touchY, button.x, button.y);
+                        if (distanceToButton <= button.radius + dpToPx(25)) {
+                            handleMenuButtonClick(i);
+                            collapse();
+                            return true;
+                        }
+                    }
+                }
+                
                 // Check if touching main FAB
                 float distanceToMain = distance(touchX, touchY, mainFabX, mainFabY);
                 
                 if (distanceToMain <= mainFabRadius + dpToPx(20)) {
-                    // Check if touching any menu button (when expanded or expanding)
-                    if (isExpanded && expandedAnimationValue > 0.3f) {
-                        for (int i = 0; i < menuButtons.length; i++) {
-                            MenuButton button = menuButtons[i];
-                            float distanceToButton = distance(touchX, touchY, button.x, button.y);
-                            if (distanceToButton <= button.radius + dpToPx(15)) {
-                                handleMenuButtonClick(i);
-                                collapse();
-                                return true;
-                            }
-                        }
-                    }
-                    
                     // Start drag or expand/collapse
                     isDragging = false;
                     touchStartX = touchX;
