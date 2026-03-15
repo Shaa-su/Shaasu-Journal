@@ -1,56 +1,67 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:padding="16dp"
     android:background="#2c2c2c">
 
-    <TextView
+    <!-- Top Bar with Date, Title, and Save Button -->
+    <LinearLayout
+        android:id="@+id/topBar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:id="@+id/dateDisplayText"
-        android:text="Date: March 15, 2026"
-        android:textSize="18sp"
-        android:textStyle="bold"
-        android:gravity="center"
-        android:layout_marginBottom="16dp"
-        android:textColor="#ffffff" />
+        android:orientation="horizontal"
+        android:padding="16dp"
+        android:background="#1c1c1c"
+        android:gravity="center_vertical"
+        android:layout_alignParentTop="true">
 
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Story Title:"
-        android:textSize="16sp"
-        android:textColor="#ffffff"
-        android:layout_marginBottom="8dp" />
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
 
-    <EditText
-        android:id="@+id/titleEditText"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:background="#3c3c3c"
-        android:textColor="#ffffff"
-        android:hint="Enter story title..."
-        android:padding="12dp"
-        android:inputType="text"
-        android:layout_marginBottom="16dp" />
+            <TextView
+                android:id="@+id/dateDisplayText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="15 Mar 2026"
+                android:textSize="14sp"
+                android:textColor="#888888" />
 
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Write Your Story:"
-        android:textSize="16sp"
-        android:textColor="#ffffff"
-        android:layout_marginBottom="8dp" />
+            <EditText
+                android:id="@+id/titleEditText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@android:color/transparent"
+                android:textColor="#ffffff"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:hint="Title"
+                android:inputType="text"
+                android:maxLines="1" />
 
-    <!-- Story Section with Inline Images -->
+        </LinearLayout>
+
+        <Button
+            android:id="@+id/saveButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="SAVE"
+            android:background="#4CAF50"
+            android:textColor="#ffffff"
+            android:padding="12dp" />
+
+    </LinearLayout>
+
+    <!-- Main Story Content Area (Full Screen) -->
     <ScrollView
+        android:id="@+id/storyScroll"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="0.4"
-        android:background="#3c3c3c"
-        android:layout_marginBottom="16dp">
+        android:layout_below="@+id/topBar"
+        android:layout_above="@+id/bottomToolbar"
+        android:background="#2c2c2c">
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -61,89 +72,126 @@
                 android:id="@+id/storyEditText"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:minHeight="150dp"
-                android:background="#3c3c3c"
+                android:minHeight="400dp"
+                android:background="@android:color/transparent"
                 android:textColor="#ffffff"
-                android:hint="Write your story here (images will appear inline at cursor)..."
-                android:padding="12dp"
+                android:textSize="16sp"
+                android:hint="Write your story here..."
+                android:padding="16dp"
                 android:gravity="top"
                 android:inputType="textMultiLine" />
-
-            <Button
-                android:id="@+id/addImageButton"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="+ Add Image at Cursor"
-                android:background="#2196F3"
-                android:textColor="#ffffff"
-                android:textStyle="bold"
-                android:layout_margin="8dp" />
 
         </LinearLayout>
 
     </ScrollView>
 
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Set Goals:"
-        android:textSize="16sp"
-        android:textColor="#ffffff"
-        android:layout_marginBottom="8dp" />
-
+    <!-- Bottom Floating Toolbar -->
     <LinearLayout
+        android:id="@+id/bottomToolbar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:layout_marginBottom="8dp">
+        android:padding="12dp"
+        android:background="#1c1c1c"
+        android:gravity="center"
+        android:layout_alignParentBottom="true">
 
         <Button
-            android:id="@+id/addGoalButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="+ Add Goal"
-            android:background="#4CAF50"
-            android:textColor="#ffffff"
-            android:textStyle="bold" />
-
-    </LinearLayout>
-
-    <ScrollView
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="0.45"
-        android:layout_marginBottom="16dp">
-
-        <LinearLayout
-            android:id="@+id/goalsContainer"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical" />
-
-    </ScrollView>
-
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:layout_gravity="bottom">
-
-        <Button
-            android:id="@+id/saveButton"
+            android:id="@+id/addImageButton"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="SAVE"
-            android:layout_marginEnd="8dp" />
+            android:text="🖼 Image"
+            android:background="#2196F3"
+            android:textColor="#ffffff"
+            android:layout_margin="4dp" />
+
+        <Button
+            android:id="@+id/toggleGoalsButton"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="✓ Goals"
+            android:background="#FF9800"
+            android:textColor="#ffffff"
+            android:layout_margin="4dp" />
+
+        <Button
+            android:id="@+id/addGoalButton"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="+ Goal"
+            android:background="#FF9800"
+            android:textColor="#ffffff"
+            android:layout_margin="4dp"
+            android:visibility="gone" />
 
         <Button
             android:id="@+id/cancelButton"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="CANCEL"
-            android:layout_marginStart="8dp" />
+            android:text="✕ Close"
+            android:background="#f44336"
+            android:textColor="#ffffff"
+            android:layout_margin="4dp" />
 
     </LinearLayout>
 
-</LinearLayout>
+    <!-- Goals Modal (Initially Hidden) -->
+    <LinearLayout
+        android:id="@+id/goalsModal"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:background="#00000080"
+        android:visibility="gone"
+        android:layout_alignParentTop="true">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:padding="16dp"
+            android:background="#2c2c2c"
+            android:layout_margin="16dp">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="My Goals"
+                android:textSize="20sp"
+                android:textColor="#ffffff"
+                android:layout_marginBottom="16dp"
+                android:textStyle="bold" />
+
+            <ScrollView
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1">
+
+                <LinearLayout
+                    android:id="@+id/goalsContainer"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical" />
+
+            </ScrollView>
+
+            <Button
+                android:id="@+id/addGoalButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="+ Add Goal"
+                android:background="#4CAF50"
+                android:textColor="#ffffff"
+                android:layout_marginTop="8dp" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+</RelativeLayout>
+
