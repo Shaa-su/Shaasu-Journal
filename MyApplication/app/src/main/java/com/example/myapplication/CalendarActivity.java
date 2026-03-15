@@ -71,8 +71,8 @@ public class CalendarActivity extends AppCompatActivity {
         html.append("th { background-color: #1c1c1c; font-weight: bold; height: 40px; padding: 8px; }");
         html.append("td { background-color: #404040; cursor: pointer; }");
         html.append("td:hover { background-color: #505050; }");
-        html.append(".empty { background-color: #2c2c2c; border: none; cursor: default; }");
-        html.append(".empty:hover { background-color: #2c2c2c; }");
+        html.append(".empty { background-color: transparent; border: 1px solid #555; cursor: default; }");
+        html.append(".empty:hover { background-color: transparent; }");
         html.append("</style></head><body>");
         
         html.append("<table>");
@@ -91,21 +91,40 @@ public class CalendarActivity extends AppCompatActivity {
         int firstDayOfWeek = tempCalendar.get(Calendar.DAY_OF_WEEK) - 1; // 0 = Sunday
         int daysInMonth = currentCalendar.getActualMaximum(Calendar.DAY_OF_MONTH);
         
+        // Debug logging
+        android.util.Log.d("CalendarActivity", "First day of month: " + firstDayOfWeek + " (0=Sunday, 6=Saturday)");
+        android.util.Log.d("CalendarActivity", "Days in month: " + daysInMonth);
+        
+        int cellCount = 0;
         int day = 1;
-        while (day <= daysInMonth) {
-            html.append("<tr>");
-            for (int i = 0; i < 7; i++) {
-                if ((day == 1 && i < firstDayOfWeek) || day > daysInMonth) {
-                    html.append("<td class='empty'></td>");
-                } else {
-                    final int dayNum = day;
-                    html.append("<td onclick='selectDate(").append(dayNum).append(")'>")
-                        .append(day).append("</td>");
-                    day++;
-                }
-            }
-            html.append("</tr>");
+        
+        html.append("<tr>");
+        
+        // Add empty cells before month starts
+        for (int i = 0; i < firstDayOfWeek; i++) {
+            html.append("<td class='empty'></td>");
+            cellCount++;
         }
+        
+        // Add days of the month
+        while (day <= daysInMonth) {
+            if (cellCount == 7) {
+                html.append("</tr><tr>");
+                cellCount = 0;
+            }
+            html.append("<td onclick='selectDate(").append(day).append(")'>")
+                .append(day).append("</td>");
+            day++;
+            cellCount++;
+        }
+        
+        // Fill remaining cells
+        while (cellCount < 7) {
+            html.append("<td class='empty'></td>");
+            cellCount++;
+        }
+        
+        html.append("</tr>");
         
         html.append("</table>");
         html.append("<script>");
