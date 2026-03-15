@@ -20,6 +20,25 @@
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:text="Story Title:"
+        android:textSize="16sp"
+        android:textColor="#ffffff"
+        android:layout_marginBottom="8dp" />
+
+    <EditText
+        android:id="@+id/titleEditText"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="#3c3c3c"
+        android:textColor="#ffffff"
+        android:hint="Enter story title..."
+        android:padding="12dp"
+        android:inputType="text"
+        android:layout_marginBottom="16dp" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
         android:text="Write Your Story:"
         android:textSize="16sp"
         android:textColor="#ffffff"
@@ -29,8 +48,8 @@
         android:id="@+id/storyEditText"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="0.5"
-        android:background="#404040"
+        android:layout_weight="0.3"
+        android:background="#3c3c3c"
         android:textColor="#ffffff"
         android:hint="Write your story here..."
         android:padding="12dp"
@@ -46,18 +65,36 @@
         android:textColor="#ffffff"
         android:layout_marginBottom="8dp" />
 
-    <EditText
-        android:id="@+id/goalsEditText"
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginBottom="8dp">
+
+        <Button
+            android:id="@+id/addGoalButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="+ Add Goal"
+            android:background="#4CAF50"
+            android:textColor="#ffffff"
+            android:textStyle="bold" />
+
+    </LinearLayout>
+
+    <ScrollView
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="0.5"
-        android:background="#404040"
-        android:textColor="#ffffff"
-        android:hint="Write your goals here..."
-        android:padding="12dp"
-        android:gravity="top"
-        android:inputType="textMultiLine"
-        android:layout_marginBottom="16dp" />
+        android:layout_weight="0.7"
+        android:layout_marginBottom="16dp">
+
+        <LinearLayout
+            android:id="@+id/goalsContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical" />
+
+    </ScrollView>
 
     <LinearLayout
         android:layout_width="match_parent"

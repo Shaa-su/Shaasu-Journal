@@ -71,17 +71,26 @@ public class StoriesListActivity extends AppCompatActivity {
             for (String dateKey : dates) {
                 String storyData = (String) allStories.get(dateKey);
                 if (storyData != null) {
-                    String[] parts = storyData.split("\\|\\|\\|");
-                    String story = parts.length > 0 ? parts[0] : "";
-                    String goals = parts.length > 1 ? parts[1] : "";
+                    // New format: title||story||goals
+                    String[] parts = storyData.split("\\|\\|");
+                    String title = parts.length > 0 ? parts[0] : "";
+                    String story = parts.length > 1 ? parts[1] : "";
+                    String goals = parts.length > 2 ? parts[2] : "";
                     
                     // Format the display
                     String preview = dateKey + "\n";
-                    if (!story.isEmpty()) {
-                        preview += "Story: " + (story.length() > 50 ? story.substring(0, 50) + "..." : story) + "\n";
+                    
+                    if (!title.isEmpty()) {
+                        preview += "📝 " + title + "\n";
                     }
+                    
+                    if (!story.isEmpty()) {
+                        preview += (story.length() > 60 ? story.substring(0, 60) + "..." : story) + "\n";
+                    }
+                    
                     if (!goals.isEmpty()) {
-                        preview += "Goals: " + (goals.length() > 50 ? goals.substring(0, 50) + "..." : goals);
+                        int goalCount = goals.split("\\|\\|\\|").length;
+                        preview += "✓ " + goalCount + " goal(s)";
                     }
                     
                     storiesList.add(preview);
