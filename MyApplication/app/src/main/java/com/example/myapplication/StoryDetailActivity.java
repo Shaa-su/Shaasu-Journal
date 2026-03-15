@@ -18,7 +18,6 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.view.View;
-import android.view.ViewTreeObserver;
 import android.view.WindowManager;
 import androidx.appcompat.app.AppCompatActivity;
 import java.io.ByteArrayOutputStream;
@@ -36,12 +35,9 @@ public class StoryDetailActivity extends AppCompatActivity {
     private LinearLayout goalsContainer;
     private LinearLayout goalsModal;
     private Button addGoalButton;
-    private Button toggleGoalsButton;
-    private Button addImageButton;
     private Button saveButton;
-    private Button cancelButton;
     private LinearLayout topBar;
-    private LinearLayout bottomToolbar;
+    private FloatingActionButton customFab;
     
     private int selectedDay;
     private int selectedMonth;
@@ -66,12 +62,9 @@ public class StoryDetailActivity extends AppCompatActivity {
         goalsContainer = findViewById(R.id.goalsContainer);
         goalsModal = findViewById(R.id.goalsModal);
         addGoalButton = findViewById(R.id.addGoalButton);
-        toggleGoalsButton = findViewById(R.id.toggleGoalsButton);
-        addImageButton = findViewById(R.id.addImageButton);
         saveButton = findViewById(R.id.saveButton);
-        cancelButton = findViewById(R.id.cancelButton);
         topBar = findViewById(R.id.topBar);
-        bottomToolbar = findViewById(R.id.bottomToolbar);
+        customFab = findViewById(R.id.customFab);
         
         // Get date from intent
         Intent intent = getIntent();
@@ -91,47 +84,23 @@ public class StoryDetailActivity extends AppCompatActivity {
         // Add Goal button click listener
         addGoalButton.setOnClickListener(v -> addGoal(""));
         
-        // Toggle Goals button click listener
-        toggleGoalsButton.setOnClickListener(v -> toggleGoalsVisibility());
-        
-        // Add Image button click listener
-        addImageButton.setOnClickListener(v -> openImagePicker());
-        
         // Save button click listener
         saveButton.setOnClickListener(v -> saveStory());
         
-        // Cancel button click listener
-        cancelButton.setOnClickListener(v -> finish());
-        
-        // Add input method listener to make bottom toolbar float above keyboard
-        setupKeyboardListener();
-    }
-    
-    private void setupKeyboardListener() {
-        storyEditText.getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
-            private int previousHeight = 0;
+        // Initialize custom FAB with menu listener
+        customFab.setMenuListener(new FloatingActionButton.FABMenuListener() {
+            @Override
+            public void onImageButtonClick() {
+                openImagePicker();
+            }
             
             @Override
-            public void onGlobalLayout() {
-                View rootView = getWindow().getDecorView().getRootView();
-                int currentHeight = rootView.getHeight();
-                
-                if (previousHeight != 0 && currentHeight != previousHeight) {
-                    // Height changed, likely keyboard appeared or disappeared
-                    int heightDiff = previousHeight - currentHeight;
-                    
-                    if (heightDiff > 200) {
-                        // Keyboard likely appeared
-                        bottomToolbar.setVisibility(View.VISIBLE);
-                    } else if (heightDiff < -200) {
-                        // Keyboard likely disappeared
-                        bottomToolbar.setVisibility(View.VISIBLE);
-                    }
-                }
-                previousHeight = currentHeight;
+            public void onGoalsButtonClick() {
+                toggleGoalsVisibility();
             }
         });
     }
+    
     
     private void toggleGoalsVisibility() {
         if (goalsModal.getVisibility() == View.VISIBLE) {
@@ -140,7 +109,6 @@ public class StoryDetailActivity extends AppCompatActivity {
                     .setDuration(300)
                     .withEndAction(() -> goalsModal.setVisibility(View.GONE))
                     .start();
-            toggleGoalsButton.setText("✓ Goals");
         } else {
             goalsModal.setAlpha(0f);
             goalsModal.setVisibility(View.VISIBLE);
@@ -148,7 +116,6 @@ public class StoryDetailActivity extends AppCompatActivity {
                     .alpha(1f)
                     .setDuration(300)
                     .start();
-            toggleGoalsButton.setText("✗ Close");
         }
     }
     
