@@ -44,18 +44,44 @@
         android:textColor="#ffffff"
         android:layout_marginBottom="8dp" />
 
-    <EditText
-        android:id="@+id/storyEditText"
+    <!-- Story Section with Inline Images -->
+    <ScrollView
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="0.3"
+        android:layout_weight="0.4"
         android:background="#3c3c3c"
-        android:textColor="#ffffff"
-        android:hint="Write your story here..."
-        android:padding="12dp"
-        android:gravity="top"
-        android:inputType="textMultiLine"
-        android:layout_marginBottom="16dp" />
+        android:layout_marginBottom="16dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <EditText
+                android:id="@+id/storyEditText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="150dp"
+                android:background="#3c3c3c"
+                android:textColor="#ffffff"
+                android:hint="Write your story here (images will appear inline at cursor)..."
+                android:padding="12dp"
+                android:gravity="top"
+                android:inputType="textMultiLine" />
+
+            <Button
+                android:id="@+id/addImageButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="+ Add Image at Cursor"
+                android:background="#2196F3"
+                android:textColor="#ffffff"
+                android:textStyle="bold"
+                android:layout_margin="8dp" />
+
+        </LinearLayout>
+
+    </ScrollView>
 
     <TextView
         android:layout_width="match_parent"
@@ -85,7 +111,7 @@
     <ScrollView
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="0.7"
+        android:layout_weight="0.45"
         android:layout_marginBottom="16dp">
 
         <LinearLayout
