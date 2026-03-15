@@ -32,4 +32,16 @@
         android:layout_height="wrap_content"
         android:text="Stories" />
 
+    <Button
+        android:id="@+id/exportButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Export Data" />
+
+    <Button
+        android:id="@+id/importButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Import Data" />
+
 </LinearLayout>
