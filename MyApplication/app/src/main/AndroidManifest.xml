@@ -28,6 +28,14 @@
         <activity
             android:name=".CalendarActivity"
             android:exported="true" />
+        
+        <activity
+            android:name=".StoryDetailActivity"
+            android:exported="true" />
+        
+        <activity
+            android:name=".StoriesListActivity"
+            android:exported="true" />
     </application>
 
 </manifest>

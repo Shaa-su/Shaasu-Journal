@@ -23,6 +23,18 @@ public class MainActivity extends AppCompatActivity {
         
         // Set up create goal button click listener
         createGoalButton.setOnClickListener(v -> handleCreateGoal());
+        
+        // Find stories button
+        Button storiesButton = findViewById(R.id.existingstory);
+        
+        // Set up stories button click listener
+        storiesButton.setOnClickListener(v -> handleViewStories());
+    }
+    
+    private void handleViewStories() {
+        // Navigate to StoriesListActivity
+        Intent intent = new Intent(MainActivity.this, StoriesListActivity.class);
+        startActivity(intent);
     }
     
     private void handleLogout() {

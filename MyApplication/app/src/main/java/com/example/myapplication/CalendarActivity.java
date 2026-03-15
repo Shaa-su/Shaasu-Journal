@@ -1,6 +1,9 @@
 package com.example.myapplication;
 
+import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.webkit.JavascriptInterface;
 import android.webkit.WebView;
 import android.widget.Button;
 import android.widget.TextView;
@@ -27,9 +30,12 @@ public class CalendarActivity extends AppCompatActivity {
         Button backButton = findViewById(R.id.backButton);
         Button prevButton = findViewById(R.id.prevButton);
         Button nextButton = findViewById(R.id.nextButton);
+        Button todayButton = findViewById(R.id.todayButton);
         
         // Configure WebView
         calendarWebView.getSettings().setDefaultTextEncodingName("utf-8");
+        calendarWebView.getSettings().setJavaScriptEnabled(true);
+        calendarWebView.addJavascriptInterface(new DatePickerInterface(), "Android");
         
         // Initialize calendar
         currentCalendar = Calendar.getInstance();
@@ -43,6 +49,15 @@ public class CalendarActivity extends AppCompatActivity {
         nextButton.setOnClickListener(v -> {
             currentCalendar.add(Calendar.MONTH, 1);
             updateCalendar();
+        });
+        todayButton.setOnClickListener(v -> {
+            android.util.Log.d("CalendarActivity", "TODAY button clicked");
+            Calendar today = Calendar.getInstance();
+            Intent intent = new Intent(CalendarActivity.this, StoryDetailActivity.class);
+            intent.putExtra("day", today.get(Calendar.DAY_OF_MONTH));
+            intent.putExtra("month", today.get(Calendar.MONTH));
+            intent.putExtra("year", today.get(Calendar.YEAR));
+            startActivityForResult(intent, 1);
         });
         
         // Display initial calendar
@@ -73,6 +88,8 @@ public class CalendarActivity extends AppCompatActivity {
         html.append("td:hover { background-color: #505050; }");
         html.append(".empty { background-color: transparent; border: 1px solid #555; cursor: default; }");
         html.append(".empty:hover { background-color: transparent; }");
+        html.append(".saved { background-color: #2a6d3a; }");
+        html.append(".saved:hover { background-color: #348a4a; }");
         html.append("</style></head><body>");
         
         html.append("<table>");
@@ -90,10 +107,8 @@ public class CalendarActivity extends AppCompatActivity {
         tempCalendar.set(Calendar.DAY_OF_MONTH, 1);
         int firstDayOfWeek = tempCalendar.get(Calendar.DAY_OF_WEEK) - 1; // 0 = Sunday
         int daysInMonth = currentCalendar.getActualMaximum(Calendar.DAY_OF_MONTH);
-        
-        // Debug logging
-        android.util.Log.d("CalendarActivity", "First day of month: " + firstDayOfWeek + " (0=Sunday, 6=Saturday)");
-        android.util.Log.d("CalendarActivity", "Days in month: " + daysInMonth);
+        int month = currentCalendar.get(Calendar.MONTH);
+        int year = currentCalendar.get(Calendar.YEAR);
         
         int cellCount = 0;
         int day = 1;
@@ -107,12 +122,18 @@ public class CalendarActivity extends AppCompatActivity {
         }
         
         // Add days of the month
+        SharedPreferences sharedPref = getSharedPreferences("stories", MODE_PRIVATE);
         while (day <= daysInMonth) {
             if (cellCount == 7) {
                 html.append("</tr><tr>");
                 cellCount = 0;
             }
-            html.append("<td onclick='selectDate(").append(day).append(")'>")
+            // Check if this day has a saved story
+            String dateKey = year + "-" + String.format("%02d", month + 1) + "-" + String.format("%02d", day);
+            boolean hasSavedStory = sharedPref.contains(dateKey);
+            String cssClass = hasSavedStory ? "saved" : "";
+            
+            html.append("<td class='").append(cssClass).append("' onclick='Android.openStoryEditor(").append(day).append(")')>")
                 .append(day).append("</td>");
             day++;
             cellCount++;
@@ -127,11 +148,6 @@ public class CalendarActivity extends AppCompatActivity {
         html.append("</tr>");
         
         html.append("</table>");
-        html.append("<script>");
-        html.append("function selectDate(day) {");
-        html.append("  alert('Selected: ' + day);");
-        html.append("}");
-        html.append("</script>");
         html.append("</body></html>");
         
         return html.toString();
@@ -139,5 +155,26 @@ public class CalendarActivity extends AppCompatActivity {
     
     private void handleBack() {
         finish();
+    }
+    
+    // JavaScript interface for handling date clicks
+    private class DatePickerInterface {
+        @JavascriptInterface
+        public void openStoryEditor(int day) {
+            Intent intent = new Intent(CalendarActivity.this, StoryDetailActivity.class);
+            intent.putExtra("day", day);
+            intent.putExtra("month", currentCalendar.get(Calendar.MONTH));
+            intent.putExtra("year", currentCalendar.get(Calendar.YEAR));
+            startActivityForResult(intent, 1);
+        }
+    }
+    
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == 1) {
+            // Refresh calendar when returning from StoryDetailActivity
+            updateCalendar();
+        }
     }
 }
