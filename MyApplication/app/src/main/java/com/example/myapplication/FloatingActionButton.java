@@ -40,6 +40,7 @@ public class FloatingActionButton extends View {
     private float dragOffsetX;
     private float dragOffsetY;
     private boolean isExpanded = false;
+    private boolean ignoreNextUp = false;
     
     // Paint objects
     private Paint mainPaint;
@@ -174,20 +175,19 @@ public class FloatingActionButton extends View {
     }
     
     private void drawMenuButtons(Canvas canvas) {
-        // Update menu button positions based on animation value
-        float distance = expandedDistance * expandedAnimationValue;
-        
-        // Image button (top)
-        menuButtons[IMAGE_BUTTON].x = mainFabX;
-        menuButtons[IMAGE_BUTTON].y = mainFabY - distance;
-        
-        // Wallpaper button (middle - will be positioned between top and bottom)
-        menuButtons[WALLPAPER_BUTTON].x = mainFabX;
-        menuButtons[WALLPAPER_BUTTON].y = mainFabY;
-        
-        // Goals button (bottom)
+        // Space buttons with a fixed step so they are not compressed.
+        // Use expandedAnimationValue to animate from the FAB position.
+        float step = (menuButtonRadius * 2f) + dpToPx(18);
+
+        // All stacked ABOVE the main FAB (closest first), to avoid overlap with the main FAB.
         menuButtons[GOALS_BUTTON].x = mainFabX;
-        menuButtons[GOALS_BUTTON].y = mainFabY + distance;
+        menuButtons[GOALS_BUTTON].y = mainFabY - (step * 1f * expandedAnimationValue);
+
+        menuButtons[WALLPAPER_BUTTON].x = mainFabX;
+        menuButtons[WALLPAPER_BUTTON].y = mainFabY - (step * 2f * expandedAnimationValue);
+
+        menuButtons[IMAGE_BUTTON].x = mainFabX;
+        menuButtons[IMAGE_BUTTON].y = mainFabY - (step * 3f * expandedAnimationValue);
         
         // Draw each menu button
         for (MenuButton button : menuButtons) {
@@ -214,9 +214,11 @@ public class FloatingActionButton extends View {
                     for (int i = 0; i < menuButtons.length; i++) {
                         MenuButton button = menuButtons[i];
                         float distanceToButton = distance(touchX, touchY, button.x, button.y);
-                        if (distanceToButton <= button.radius + dpToPx(25)) {
+                        // Slightly smaller hit slop so taps don't overlap adjacent buttons
+                        if (distanceToButton <= button.radius + dpToPx(12)) {
                             handleMenuButtonClick(i);
                             collapse();
+                            ignoreNextUp = true;
                             return true;
                         }
                     }
@@ -232,6 +234,15 @@ public class FloatingActionButton extends View {
                     touchStartY = touchY;
                     dragOffsetX = touchX - mainFabX;
                     dragOffsetY = touchY - mainFabY;
+                    ignoreNextUp = false;
+                    return true;
+                }
+
+                // If menu is open and user taps anywhere else, close it.
+                if (isExpanded && expandedAnimationValue > 0f) {
+                    collapse();
+                    // Prevent ACTION_UP from toggling it open again.
+                    ignoreNextUp = true;
                     return true;
                 }
                 break;
@@ -261,6 +272,11 @@ public class FloatingActionButton extends View {
                 return true;
                 
             case MotionEvent.ACTION_UP:
+                if (ignoreNextUp) {
+                    ignoreNextUp = false;
+                    isDragging = false;
+                    return true;
+                }
                 if (isDragging) {
                     // Just stop dragging - no snapping to corners
                     isDragging = false;

@@ -1,5 +1,6 @@
 package com.example.myapplication;
 
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.widget.ArrayAdapter;
@@ -10,6 +11,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 public class StoriesListActivity extends AppCompatActivity {
 
@@ -17,6 +19,10 @@ public class StoriesListActivity extends AppCompatActivity {
     private Button backButton;
     private ArrayAdapter<String> adapter;
     private List<String> storiesList;
+    private final List<String> storyDateKeys = new ArrayList<>();
+
+    private static final Pattern IMAGE_PLACEHOLDER_PATTERN = Pattern.compile("\\[IMG:(.+?)\\]", Pattern.DOTALL);
+    private static final String WALLPAPER_MARKER = "[WALLPAPER_MARKER]";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -48,7 +54,27 @@ public class StoriesListActivity extends AppCompatActivity {
         
         // Set item click listener to view story details
         storiesListView.setOnItemClickListener((parent, view, position, id) -> {
-            // Can add functionality to view/edit individual story
+            if (position < 0 || position >= storyDateKeys.size()) return;
+            String dateKey = storyDateKeys.get(position);
+            if (dateKey == null || dateKey.isEmpty()) return;
+
+            // dateKey format: YYYY-MM-DD
+            String[] parts = dateKey.split("-");
+            if (parts.length != 3) return;
+
+            try {
+                int year = Integer.parseInt(parts[0]);
+                int month = Integer.parseInt(parts[1]) - 1; // 0-11
+                int day = Integer.parseInt(parts[2]);
+
+                Intent intent = new Intent(StoriesListActivity.this, StoryDetailActivity.class);
+                intent.putExtra("day", day);
+                intent.putExtra("month", month);
+                intent.putExtra("year", year);
+                startActivity(intent);
+            } catch (NumberFormatException ignored) {
+                // Ignore invalid date key
+            }
         });
         
         // Back button
@@ -60,9 +86,11 @@ public class StoriesListActivity extends AppCompatActivity {
         Map<String, ?> allStories = sharedPref.getAll();
         
         storiesList.clear();
+        storyDateKeys.clear();
         
         if (allStories.isEmpty()) {
             storiesList.add("No stories created yet. Start writing!");
+            storyDateKeys.add(null);
         } else {
             // Sort dates in reverse order (newest first)
             List<String> dates = new ArrayList<>(allStories.keySet());
@@ -71,11 +99,21 @@ public class StoriesListActivity extends AppCompatActivity {
             for (String dateKey : dates) {
                 String storyData = (String) allStories.get(dateKey);
                 if (storyData != null) {
-                    // New format: title||story||goals
-                    String[] parts = storyData.split("\\|\\|");
+                    // Format: title||story||goals[WALLPAPER_MARKER]wallpaperBase64
+                    // Strip wallpaper payload for preview parsing.
+                    String storyDataForPreview = storyData;
+                    int markerIndex = storyDataForPreview.indexOf(WALLPAPER_MARKER);
+                    if (markerIndex >= 0) {
+                        storyDataForPreview = storyDataForPreview.substring(0, markerIndex);
+                    }
+
+                    String[] parts = storyDataForPreview.split("\\|\\|");
                     String title = parts.length > 0 ? parts[0] : "";
                     String story = parts.length > 1 ? parts[1] : "";
                     String goals = parts.length > 2 ? parts[2] : "";
+
+                    // Remove inline image placeholders from preview text
+                    story = IMAGE_PLACEHOLDER_PATTERN.matcher(story).replaceAll("[image]");
                     
                     // Format the display
                     String preview = dateKey + "\n";
@@ -94,6 +132,7 @@ public class StoriesListActivity extends AppCompatActivity {
                     }
                     
                     storiesList.add(preview);
+                    storyDateKeys.add(dateKey);
                 }
             }
         }
