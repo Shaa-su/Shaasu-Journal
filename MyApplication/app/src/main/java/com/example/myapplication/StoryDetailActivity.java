@@ -193,11 +193,13 @@ public class StoryDetailActivity extends AppCompatActivity {
     }
     
     private void openImagePicker() {
+        if (customFab != null) customFab.collapseImmediately();
         Intent intent = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
         startActivityForResult(intent, PICK_IMAGE_REQUEST);
     }
     
     private void openWallpaperPicker() {
+        if (customFab != null) customFab.collapseImmediately();
         Intent intent = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
         startActivityForResult(intent, PICK_WALLPAPER_REQUEST);
     }
@@ -278,8 +280,9 @@ public class StoryDetailActivity extends AppCompatActivity {
         try {
             Bitmap bitmap = BitmapFactory.decodeStream(getContentResolver().openInputStream(wallpaperUri));
             if (bitmap != null) {
-                // Compress wallpaper to reasonable size (500px max width)
-                int maxWallpaperWidth = 500;
+                // Scale wallpaper to a reasonable size for the device (avoids tiny bitmap being blown up)
+                int screenWidthPx = getResources().getDisplayMetrics().widthPixels;
+                int maxWallpaperWidth = Math.min(1080, screenWidthPx);
                 int width = bitmap.getWidth();
                 int height = bitmap.getHeight();
                 
@@ -478,7 +481,7 @@ public class StoryDetailActivity extends AppCompatActivity {
                 if (wallpaper != null) {
                     wallpaperBitmap = wallpaper;
                     wallpaperImageView.setImageBitmap(wallpaper);
-                    wallpaperImageView.setAlpha(0.4f);
+                    wallpaperImageView.setAlpha(1f);
                 }
             }
         }

@@ -319,6 +319,13 @@ public class FloatingActionButton extends View {
         animator.setDuration(300);
         animator.start();
     }
+
+    // Used by activities before launching pickers to ensure the dim overlay isn't left on-screen.
+    public void collapseImmediately() {
+        isExpanded = false;
+        expandedAnimationValue = 0f;
+        invalidate();
+    }
     
     @SuppressWarnings("unused")
     public void setExpandedAnimationValue(float value) {

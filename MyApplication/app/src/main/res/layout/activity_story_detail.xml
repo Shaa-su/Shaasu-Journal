@@ -11,12 +11,6 @@
         android:layout_height="match_parent"
         android:scaleType="centerCrop" />
 
-    <!-- Semi-transparent overlay for better readability -->
-    <View
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:background="#66000000" />
-
     <!-- Main Content -->
     <LinearLayout
         android:layout_width="match_parent"
