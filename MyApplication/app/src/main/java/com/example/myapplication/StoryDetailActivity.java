@@ -14,6 +14,7 @@ import android.util.Base64;
 import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -23,6 +24,8 @@ import androidx.appcompat.app.AppCompatActivity;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -38,14 +41,17 @@ public class StoryDetailActivity extends AppCompatActivity {
     private Button saveButton;
     private LinearLayout topBar;
     private FloatingActionButton customFab;
+    private ImageView wallpaperImageView;
     
     private int selectedDay;
     private int selectedMonth;
     private int selectedYear;
     
     private List<GoalItem> goalItems = new ArrayList<>();
+    private Bitmap wallpaperBitmap;
     
     private static final int PICK_IMAGE_REQUEST = 1;
+    private static final int PICK_WALLPAPER_REQUEST = 2;
     private static final int MAX_IMAGE_WIDTH = 300;
 
     @Override
@@ -65,6 +71,9 @@ public class StoryDetailActivity extends AppCompatActivity {
         saveButton = findViewById(R.id.saveButton);
         topBar = findViewById(R.id.topBar);
         customFab = findViewById(R.id.customFab);
+        wallpaperImageView = findViewById(R.id.wallpaperImageView);
+        // Keep wallpaper fully opaque; overlay controls readability
+        wallpaperImageView.setAlpha(1f);
         
         // Get date from intent
         Intent intent = getIntent();
@@ -97,6 +106,11 @@ public class StoryDetailActivity extends AppCompatActivity {
             @Override
             public void onGoalsButtonClick() {
                 toggleGoalsVisibility();
+            }
+            
+            @Override
+            public void onWallpaperButtonClick() {
+                openWallpaperPicker();
             }
         });
     }
@@ -183,6 +197,11 @@ public class StoryDetailActivity extends AppCompatActivity {
         startActivityForResult(intent, PICK_IMAGE_REQUEST);
     }
     
+    private void openWallpaperPicker() {
+        Intent intent = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
+        startActivityForResult(intent, PICK_WALLPAPER_REQUEST);
+    }
+    
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
@@ -191,6 +210,11 @@ public class StoryDetailActivity extends AppCompatActivity {
             Uri imageUri = data.getData();
             if (imageUri != null) {
                 addImage(imageUri);
+            }
+        } else if (requestCode == PICK_WALLPAPER_REQUEST && resultCode == RESULT_OK && data != null) {
+            Uri wallpaperUri = data.getData();
+            if (wallpaperUri != null) {
+                setWallpaper(wallpaperUri);
             }
         }
     }
@@ -250,6 +274,33 @@ public class StoryDetailActivity extends AppCompatActivity {
         return Bitmap.createScaledBitmap(bitmap, MAX_IMAGE_WIDTH, newHeight, true);
     }
     
+    private void setWallpaper(Uri wallpaperUri) {
+        try {
+            Bitmap bitmap = BitmapFactory.decodeStream(getContentResolver().openInputStream(wallpaperUri));
+            if (bitmap != null) {
+                // Compress wallpaper to reasonable size (500px max width)
+                int maxWallpaperWidth = 500;
+                int width = bitmap.getWidth();
+                int height = bitmap.getHeight();
+                
+                if (width > maxWallpaperWidth) {
+                    float ratio = (float) height / width;
+                    int newHeight = (int) (maxWallpaperWidth * ratio);
+                    bitmap = Bitmap.createScaledBitmap(bitmap, maxWallpaperWidth, newHeight, true);
+                }
+                
+                wallpaperBitmap = bitmap;
+                wallpaperImageView.setImageBitmap(bitmap);
+                wallpaperImageView.setAlpha(1f);
+                Toast.makeText(this, "hey this is update for now?", Toast.LENGTH_SHORT).show();
+            } else {
+                Toast.makeText(this, "Error loading wallpaper", Toast.LENGTH_SHORT).show();
+            }
+        } catch (IOException e) {
+            Toast.makeText(this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+        }
+    }
+    
     private String encodeImageToBase64(Bitmap bitmap) {
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         bitmap.compress(Bitmap.CompressFormat.PNG, 100, byteArrayOutputStream);
@@ -298,7 +349,18 @@ public class StoryDetailActivity extends AppCompatActivity {
         SharedPreferences.Editor editor = sharedPref.edit();
         
         String dateKey = selectedYear + "-" + String.format("%02d", selectedMonth + 1) + "-" + String.format("%02d", selectedDay);
+        
+        // Encode wallpaper if set
+        String wallpaperEncoded = "";
+        if (wallpaperBitmap != null) {
+            wallpaperEncoded = encodeImageToBase64(wallpaperBitmap);
+        }
+        
+        // Format: title||story||goals[WALLPAPER_MARKER]wallpaperBase64
         String storyData = title + "||" + storyWithPlaceholders + "||" + goalsData.toString();
+        if (!wallpaperEncoded.isEmpty()) {
+            storyData += "[WALLPAPER_MARKER]" + wallpaperEncoded;
+        }
         
         editor.putString(dateKey, storyData);
         editor.apply();
@@ -310,11 +372,20 @@ public class StoryDetailActivity extends AppCompatActivity {
     private String extractStoryWithImagePlaceholders(Spanned spanned) {
         StringBuilder result = new StringBuilder();
         ImageSpan[] imageSpans = spanned.getSpans(0, spanned.length(), ImageSpan.class);
+
+        // getSpans() order is not guaranteed; sort by position so saving works
+        Arrays.sort(imageSpans, Comparator.comparingInt(spanned::getSpanStart));
         
         int lastIndex = 0;
         for (ImageSpan imageSpan : imageSpans) {
             int start = spanned.getSpanStart(imageSpan);
             int end = spanned.getSpanEnd(imageSpan);
+
+            if (start < 0 || end < 0) continue;
+            if (start < lastIndex) {
+                // Defensive: skip overlapping/out-of-order spans
+                continue;
+            }
             
             // Add text before image
             result.append(spanned.subSequence(lastIndex, start));
@@ -337,9 +408,24 @@ public class StoryDetailActivity extends AppCompatActivity {
     
     private Bitmap getImageBitmapFromImageSpan(ImageSpan imageSpan) {
         try {
-            // ImageSpan stores the bitmap in its drawable
-            return ((android.graphics.drawable.BitmapDrawable) imageSpan.getDrawable()).getBitmap();
+            android.graphics.drawable.Drawable drawable = imageSpan.getDrawable();
+            if (drawable instanceof android.graphics.drawable.BitmapDrawable) {
+                return ((android.graphics.drawable.BitmapDrawable) drawable).getBitmap();
+            } else {
+                // For other drawable types, try to convert to bitmap
+                int width = drawable.getIntrinsicWidth();
+                int height = drawable.getIntrinsicHeight();
+                if (width <= 0) width = 300;
+                if (height <= 0) height = 300;
+                
+                Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+                android.graphics.Canvas canvas = new android.graphics.Canvas(bitmap);
+                drawable.setBounds(0, 0, width, height);
+                drawable.draw(canvas);
+                return bitmap;
+            }
         } catch (Exception e) {
+            Toast.makeText(this, "Error extracting image: " + e.getMessage(), Toast.LENGTH_SHORT).show();
             return null;
         }
     }
@@ -350,6 +436,16 @@ public class StoryDetailActivity extends AppCompatActivity {
         String storyData = sharedPref.getString(dateKey, null);
         
         if (storyData != null) {
+            // First, extract wallpaper if present
+            String wallpaperEncoded = "";
+            if (storyData.contains("[WALLPAPER_MARKER]")) {
+                String[] wallpaperParts = storyData.split("\\[WALLPAPER_MARKER\\]");
+                storyData = wallpaperParts[0]; // Main data without wallpaper
+                if (wallpaperParts.length > 1) {
+                    wallpaperEncoded = wallpaperParts[1];
+                }
+            }
+            
             String[] parts = storyData.split("\\|\\|");
             if (parts.length >= 1) {
                 titleEditText.setText(parts[0]);
@@ -373,6 +469,16 @@ public class StoryDetailActivity extends AppCompatActivity {
                         GoalItem lastGoal = goalItems.get(goalItems.size() - 1);
                         lastGoal.checkBox.setChecked(isCompleted);
                     }
+                }
+            }
+            
+            // Load wallpaper
+            if (!wallpaperEncoded.isEmpty()) {
+                Bitmap wallpaper = decodeImageFromBase64(wallpaperEncoded);
+                if (wallpaper != null) {
+                    wallpaperBitmap = wallpaper;
+                    wallpaperImageView.setImageBitmap(wallpaper);
+                    wallpaperImageView.setAlpha(0.4f);
                 }
             }
         }

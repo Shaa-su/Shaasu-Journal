@@ -28,9 +28,10 @@ public class FloatingActionButton extends View {
     private float expandedAnimationValue = 0f;
     
     // Menu buttons
-    private MenuButton[] menuButtons = new MenuButton[2];
+    private MenuButton[] menuButtons = new MenuButton[3];
     private static final int IMAGE_BUTTON = 0;
     private static final int GOALS_BUTTON = 1;
+    private static final int WALLPAPER_BUTTON = 2;
     
     // Touch and drag properties
     private boolean isDragging = false;
@@ -55,6 +56,7 @@ public class FloatingActionButton extends View {
     public interface FABMenuListener {
         void onImageButtonClick();
         void onGoalsButtonClick();
+        void onWallpaperButtonClick();
     }
     
     private FABMenuListener menuListener;
@@ -136,6 +138,7 @@ public class FloatingActionButton extends View {
         // Initialize menu buttons
         menuButtons[IMAGE_BUTTON] = new MenuButton(0, 0, menuButtonRadius, 0xFF2196F3, "🖼");
         menuButtons[GOALS_BUTTON] = new MenuButton(0, 0, menuButtonRadius, 0xFFFF9800, "✓");
+        menuButtons[WALLPAPER_BUTTON] = new MenuButton(0, 0, menuButtonRadius, 0xFFf44336, "🎨");
         
         setWillNotDraw(false);
     }
@@ -177,6 +180,10 @@ public class FloatingActionButton extends View {
         // Image button (top)
         menuButtons[IMAGE_BUTTON].x = mainFabX;
         menuButtons[IMAGE_BUTTON].y = mainFabY - distance;
+        
+        // Wallpaper button (middle - will be positioned between top and bottom)
+        menuButtons[WALLPAPER_BUTTON].x = mainFabX;
+        menuButtons[WALLPAPER_BUTTON].y = mainFabY;
         
         // Goals button (bottom)
         menuButtons[GOALS_BUTTON].x = mainFabX;
@@ -332,6 +339,9 @@ public class FloatingActionButton extends View {
                 break;
             case GOALS_BUTTON:
                 menuListener.onGoalsButtonClick();
+                break;
+            case WALLPAPER_BUTTON:
+                menuListener.onWallpaperButtonClick();
                 break;
         }
     }
