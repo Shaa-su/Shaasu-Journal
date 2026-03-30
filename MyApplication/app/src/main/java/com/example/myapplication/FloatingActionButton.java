@@ -174,13 +174,13 @@ public class FloatingActionButton extends View {
         // Update menu button positions based on animation value
         float distance = expandedDistance * expandedAnimationValue;
         
-        // Image button (left)
-        menuButtons[IMAGE_BUTTON].x = mainFabX - distance;
-        menuButtons[IMAGE_BUTTON].y = mainFabY;
+        // Image button (top)
+        menuButtons[IMAGE_BUTTON].x = mainFabX;
+        menuButtons[IMAGE_BUTTON].y = mainFabY - distance;
         
-        // Goals button (right)
-        menuButtons[GOALS_BUTTON].x = mainFabX + distance;
-        menuButtons[GOALS_BUTTON].y = mainFabY;
+        // Goals button (bottom)
+        menuButtons[GOALS_BUTTON].x = mainFabX;
+        menuButtons[GOALS_BUTTON].y = mainFabY + distance;
         
         // Draw each menu button
         for (MenuButton button : menuButtons) {
