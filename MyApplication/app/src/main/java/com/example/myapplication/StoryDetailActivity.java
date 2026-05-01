@@ -170,7 +170,7 @@ public class StoryDetailActivity extends AppCompatActivity {
 
                 // getScaleFactor() is incremental since the previous callback
                 int newWidth = clamp((int) (currentWidth * scaleFactor), MIN_INLINE_IMAGE_WIDTH_PX, getMaxInlineImageWidthPx());
-                float ratio = (float) currentHeight / (float) currentWidth;
+                float ratio = activeResizableImageSpan.getAspectRatio();
                 int newHeight = Math.max(1, (int) (newWidth * ratio));
 
                 activeResizableImageSpan.setSizePx(newWidth, newHeight);
@@ -238,9 +238,7 @@ public class StoryDetailActivity extends AppCompatActivity {
                     int targetWidth = minW + (int) ((progress / (float) RESIZE_SEEKBAR_MAX) * (maxW - minW));
                     targetWidth = clamp(targetWidth, minW, maxW);
 
-                    int currentWidth = Math.max(1, activeResizableImageSpan.getWidthPx());
-                    int currentHeight = Math.max(1, activeResizableImageSpan.getHeightPx());
-                    float ratio = (float) currentHeight / (float) currentWidth;
+                    float ratio = activeResizableImageSpan.getAspectRatio();
                     int targetHeight = Math.max(1, (int) (targetWidth * ratio));
 
                     activeResizableImageSpan.setSizePx(targetWidth, targetHeight);
@@ -911,10 +909,25 @@ public class StoryDetailActivity extends AppCompatActivity {
 
     private static class ResizableImageSpan extends ImageSpan {
         private final android.graphics.drawable.BitmapDrawable drawable;
+        private final float aspectRatio;
 
         ResizableImageSpan(android.content.Context context, Bitmap bitmap, int widthPx, int heightPx) {
             super(context, bitmap);
             drawable = new android.graphics.drawable.BitmapDrawable(context.getResources(), bitmap);
+
+            // Lock aspect ratio to the underlying bitmap (prevents drift after repeated resizes,
+            // which is especially noticeable on very wide/horizontal images).
+            float w = bitmap != null ? bitmap.getWidth() : 0;
+            float h = bitmap != null ? bitmap.getHeight() : 0;
+            float r;
+            if (w > 0 && h > 0) {
+                r = h / w;
+            } else if (widthPx > 0 && heightPx > 0) {
+                r = (float) heightPx / (float) widthPx;
+            } else {
+                r = 1f;
+            }
+            aspectRatio = (Float.isFinite(r) && r > 0f) ? r : 1f;
             setSizePx(widthPx, heightPx);
         }
 
@@ -935,6 +948,10 @@ public class StoryDetailActivity extends AppCompatActivity {
 
         int getHeightPx() {
             return drawable.getBounds().height();
+        }
+
+        float getAspectRatio() {
+            return aspectRatio;
         }
     }
     
