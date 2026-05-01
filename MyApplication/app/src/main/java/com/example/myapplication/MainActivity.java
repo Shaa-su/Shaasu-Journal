@@ -3,7 +3,8 @@ package com.example.myapplication;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
-import android.widget.Button;
+import android.view.View;
+import android.widget.TextView;
 import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 import org.json.JSONObject;
@@ -26,31 +27,32 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         
-        // Find logout button
-        Button logoutButton = findViewById(R.id.logoutButton);
-        
-        // Set up logout button click listener
-        logoutButton.setOnClickListener(v -> handleLogout());
-        
-        // Find create goal button
-        Button createGoalButton = findViewById(R.id.creategoal);
-        
-        // Set up create goal button click listener
-        createGoalButton.setOnClickListener(v -> handleCreateGoal());
-        
-        // Find stories button
-        Button storiesButton = findViewById(R.id.existingstory);
-        
-        // Set up stories button click listener
-        storiesButton.setOnClickListener(v -> handleViewStories());
-        
-        // Find export button
-        Button exportButton = findViewById(R.id.exportButton);
-        exportButton.setOnClickListener(v -> handleExportData());
-        
-        // Find import button
-        Button importButton = findViewById(R.id.importButton);
-        importButton.setOnClickListener(v -> handleImportData());
+        // Logout (top-right text)
+        TextView logoutButton = findViewById(R.id.logoutButton);
+        if (logoutButton != null) {
+            logoutButton.setOnClickListener(v -> handleLogout());
+        }
+
+        // Cards
+        View createGoalCard = findViewById(R.id.creategoal);
+        if (createGoalCard != null) {
+            createGoalCard.setOnClickListener(v -> handleCreateGoal());
+        }
+
+        View storiesCard = findViewById(R.id.existingstory);
+        if (storiesCard != null) {
+            storiesCard.setOnClickListener(v -> handleViewStories());
+        }
+
+        View exportCard = findViewById(R.id.exportButton);
+        if (exportCard != null) {
+            exportCard.setOnClickListener(v -> handleExportData());
+        }
+
+        View importCard = findViewById(R.id.importButton);
+        if (importCard != null) {
+            importCard.setOnClickListener(v -> handleImportData());
+        }
     }
     
     private void handleViewStories() {

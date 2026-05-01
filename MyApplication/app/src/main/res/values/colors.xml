@@ -7,4 +7,13 @@
     <color name="teal_700">#FF018786</color>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+
+    <!-- Menu (Figma-inspired) -->
+    <color name="menu_bg">#FF0B0F14</color>
+    <color name="menu_surface">#FF141B22</color>
+    <color name="menu_surface_alt">#FF10161D</color>
+    <color name="menu_teal">#FF19BFAE</color>
+    <color name="menu_teal_icon_bg">#FF0F9F92</color>
+    <color name="menu_text_primary">#FFFFFFFF</color>
+    <color name="menu_text_secondary">#FF9AA6B2</color>
 </resources>
