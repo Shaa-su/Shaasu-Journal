@@ -22,10 +22,12 @@
                 android:layout_height="240dp">
 
                 <ImageView
+                    android:id="@+id/menuHeaderImage"
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:scaleType="centerCrop"
-                    android:src="@drawable/bg_menu_header_placeholder" />
+                    android:src="@drawable/menu_header"
+                    android:contentDescription="Menu header" />
 
                 <View
                     android:layout_width="match_parent"

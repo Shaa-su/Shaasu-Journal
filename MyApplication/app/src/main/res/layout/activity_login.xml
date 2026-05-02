@@ -1,40 +1,318 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:padding="16dp">
+    android:background="@color/menu_bg">
 
-    <TextView
-        android:id="@+id/textView"
+    <!-- Top glow -->
+    <View
+        android:id="@+id/topGlow"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:gravity="center"
-        android:textSize="26sp"
-        android:text="@string/welcome" />
+        android:layout_height="320dp"
+        android:alpha="0.9"
+        android:background="@drawable/bg_login_top_glow"
+        app:layout_constraintTop_toTopOf="parent" />
 
-    <EditText
-        android:id="@+id/usernameInput"
+    <ScrollView
+        android:id="@+id/loginScroll"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:hint="@string/username"
-        android:inputType="text" />
+        android:layout_height="match_parent"
+        android:fillViewport="true">
 
-    <EditText
-        android:id="@+id/passwordInput"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:hint="@string/password"
-        android:inputType="textPassword" />
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingLeft="24dp"
+            android:paddingRight="24dp"
+            android:paddingTop="36dp"
+            android:paddingBottom="18dp">
 
-    <Button
-        android:id="@+id/loginButton"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="@string/login" />
-    <Button
-        android:id="@+id/reset"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="@string/forgot_password" />
-</LinearLayout>
+            <!-- Logo + glow -->
+            <FrameLayout
+                android:id="@+id/logoContainer"
+                android:layout_width="92dp"
+                android:layout_height="92dp"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent">
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="@drawable/bg_login_icon_glow" />
+
+                <FrameLayout
+                    android:layout_width="72dp"
+                    android:layout_height="72dp"
+                    android:layout_gravity="center"
+                    android:background="@drawable/bg_login_icon_square"
+                    android:elevation="6dp">
+
+                    <ImageView
+                        android:layout_width="28dp"
+                        android:layout_height="28dp"
+                        android:layout_gravity="center"
+                        android:src="@drawable/ic_book_simple"
+                        android:tint="@color/menu_text_primary"
+                        android:contentDescription="App icon" />
+                </FrameLayout>
+            </FrameLayout>
+
+            <TextView
+                android:id="@+id/loginTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="14dp"
+                android:text="@string/login_title"
+                android:textColor="@color/menu_text_primary"
+                android:textSize="30sp"
+                android:textStyle="bold"
+                app:layout_constraintTop_toBottomOf="@+id/logoContainer"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent" />
+
+            <TextView
+                android:id="@+id/loginTagline"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:text="@string/login_tagline"
+                android:textColor="@color/menu_text_secondary"
+                android:textSize="14sp"
+                app:layout_constraintTop_toBottomOf="@+id/loginTitle"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent" />
+
+            <!-- Broken divider line + centered dot -->
+            <androidx.constraintlayout.widget.ConstraintLayout
+                android:id="@+id/dividerContainer"
+                android:layout_width="200dp"
+                android:layout_height="18dp"
+                android:layout_marginTop="18dp"
+                app:layout_constraintTop_toBottomOf="@+id/loginTagline"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent">
+
+                <View
+                    android:id="@+id/dividerLineLeft"
+                    android:layout_width="0dp"
+                    android:layout_height="2dp"
+                    android:alpha="0.7"
+                    android:background="@drawable/bg_login_divider_fade_left"
+                    app:layout_constraintTop_toTopOf="parent"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintEnd_toStartOf="@+id/dividerDot"
+                    android:layout_marginEnd="10dp" />
+
+                <View
+                    android:id="@+id/dividerLineRight"
+                    android:layout_width="0dp"
+                    android:layout_height="2dp"
+                    android:alpha="0.7"
+                    android:background="@drawable/bg_login_divider_fade_right"
+                    app:layout_constraintTop_toTopOf="parent"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintStart_toEndOf="@+id/dividerDot"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    android:layout_marginStart="10dp" />
+
+                <View
+                    android:id="@+id/dividerDot"
+                    android:layout_width="6dp"
+                    android:layout_height="6dp"
+                    android:background="@drawable/bg_menu_circle_teal"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintTop_toTopOf="parent"
+                    app:layout_constraintBottom_toBottomOf="parent" />
+
+            </androidx.constraintlayout.widget.ConstraintLayout>
+
+            <!-- Login card -->
+            <LinearLayout
+                android:id="@+id/loginCard"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="26dp"
+                android:background="@drawable/bg_login_card"
+                android:orientation="vertical"
+                android:padding="18dp"
+                app:layout_constraintTop_toBottomOf="@+id/dividerContainer"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/login_username_label"
+                    android:textColor="@color/menu_text_secondary"
+                    android:textSize="12sp"
+                    android:letterSpacing="0.12"
+                    android:layout_marginBottom="8dp" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/bg_login_input"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:paddingLeft="12dp"
+                    android:paddingRight="12dp"
+                    android:paddingTop="12dp"
+                    android:paddingBottom="12dp">
+
+                    <ImageView
+                        android:layout_width="18dp"
+                        android:layout_height="18dp"
+                        android:src="@drawable/ic_user_simple"
+                        android:tint="@color/menu_text_secondary"
+                        android:contentDescription="Username" />
+
+                    <EditText
+                        android:id="@+id/usernameInput"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="10dp"
+                        android:layout_weight="1"
+                        android:background="@android:color/transparent"
+                        android:hint="@string/login_username_hint"
+                        android:textColor="@color/menu_text_primary"
+                        android:textColorHint="@color/menu_text_secondary"
+                        android:inputType="text"
+                        android:textSize="14sp" />
+                </LinearLayout>
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:text="@string/login_password_label"
+                    android:textColor="@color/menu_text_secondary"
+                    android:textSize="12sp"
+                    android:letterSpacing="0.12"
+                    android:layout_marginBottom="8dp" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/bg_login_input"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:paddingLeft="12dp"
+                    android:paddingRight="12dp"
+                    android:paddingTop="12dp"
+                    android:paddingBottom="12dp">
+
+                    <ImageView
+                        android:layout_width="18dp"
+                        android:layout_height="18dp"
+                        android:src="@drawable/ic_lock_simple"
+                        android:tint="@color/menu_text_secondary"
+                        android:contentDescription="Password" />
+
+                    <EditText
+                        android:id="@+id/passwordInput"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="10dp"
+                        android:layout_weight="1"
+                        android:background="@android:color/transparent"
+                        android:hint="@string/login_password_hint"
+                        android:textColor="@color/menu_text_primary"
+                        android:textColorHint="@color/menu_text_secondary"
+                        android:inputType="textPassword"
+                        android:textSize="14sp" />
+
+                    <ImageView
+                        android:id="@+id/passwordToggle"
+                        android:layout_width="22dp"
+                        android:layout_height="22dp"
+                        android:src="@drawable/ic_eye_simple"
+                        android:tint="@color/menu_text_secondary"
+                        android:padding="2dp"
+                        android:contentDescription="Toggle password" />
+                </LinearLayout>
+
+                <!-- CTA with glow -->
+                <FrameLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="18dp">
+
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="56dp"
+                        android:alpha="0.9"
+                        android:background="@drawable/bg_login_button_glow" />
+
+                    <Button
+                        android:id="@+id/loginButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="56dp"
+                        android:background="@drawable/bg_login_button"
+                        android:text="@string/login_cta"
+                        android:textColor="@color/menu_text_primary"
+                        android:textSize="16sp"
+                        android:textStyle="bold"
+                        android:textAllCaps="false" />
+
+                    <ImageView
+                        android:layout_width="18dp"
+                        android:layout_height="18dp"
+                        android:layout_gravity="center_vertical|end"
+                        android:layout_marginEnd="18dp"
+                        android:src="@drawable/ic_arrow_right_simple"
+                        android:tint="@color/menu_text_primary"
+                        android:contentDescription="Continue" />
+                </FrameLayout>
+
+            </LinearLayout>
+
+            <!-- Reset password link -->
+            <LinearLayout
+                android:id="@+id/reset"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:clickable="true"
+                android:focusable="true"
+                app:layout_constraintTop_toBottomOf="@+id/loginCard"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent">
+
+                <ImageView
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
+                    android:src="@drawable/ic_reset_simple"
+                    android:tint="@color/menu_text_secondary"
+                    android:contentDescription="Reset" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:text="@string/login_reset_password"
+                    android:textColor="@color/menu_text_secondary"
+                    android:textSize="13sp" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/loginFooter"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="28dp"
+                android:text="@string/login_footer"
+                android:textColor="#338A97A6"
+                android:textSize="11sp"
+                app:layout_constraintTop_toBottomOf="@+id/reset"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent" />
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
+    </ScrollView>
+
+</androidx.constraintlayout.widget.ConstraintLayout>
