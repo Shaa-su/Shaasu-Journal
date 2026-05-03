@@ -77,6 +77,7 @@ public class FloatingActionButton extends View {
 
         // Hit target for pill buttons
         final RectF hitRect = new RectF();
+        final RectF touchRect = new RectF();
         String text;
         String icon;
         
@@ -90,7 +91,7 @@ public class FloatingActionButton extends View {
         }
 
         boolean contains(float px, float py) {
-            return hitRect.contains(px, py);
+            return touchRect.contains(px, py);
         }
     }
     
@@ -199,6 +200,18 @@ public class FloatingActionButton extends View {
         // Draw main FAB
         drawMainFab(canvas);
     }
+
+    @Override
+    protected void onSizeChanged(int w, int h, int oldw, int oldh) {
+        super.onSizeChanged(w, h, oldw, oldh);
+        if (w > 0) screenWidth = w;
+        if (h > 0) screenHeight = h;
+
+        // Keep FAB inside bounds after rotations / layout changes.
+        float padding = dpToPx(5);
+        mainFabX = Math.max(mainFabRadius + padding, Math.min(mainFabX, screenWidth - mainFabRadius - padding));
+        mainFabY = Math.max(mainFabRadius + padding, Math.min(mainFabY, screenHeight - mainFabRadius - padding));
+    }
     
     private void drawMainFab(Canvas canvas) {
         float t = Math.max(0f, Math.min(1f, expandedAnimationValue));
@@ -234,37 +247,15 @@ public class FloatingActionButton extends View {
     private void drawMenuButtons(Canvas canvas) {
         // Pill geometry (matches the screenshot style)
         float pillHeight = dpToPx(44);
-        float pillWidth = dpToPx(172);
         float pillRadius = pillHeight / 2f;
-        float step = pillHeight + dpToPx(14);
-        float screenPadding = dpToPx(16);
 
-        // All stacked ABOVE the main FAB (closest first), to avoid overlap with the main FAB.
-        menuButtons[GOALS_BUTTON].x = mainFabX;
-        menuButtons[GOALS_BUTTON].y = mainFabY - (step * 1f * expandedAnimationValue);
-
-        menuButtons[WALLPAPER_BUTTON].x = mainFabX;
-        menuButtons[WALLPAPER_BUTTON].y = mainFabY - (step * 2f * expandedAnimationValue);
-
-        menuButtons[IMAGE_BUTTON].x = mainFabX;
-        menuButtons[IMAGE_BUTTON].y = mainFabY - (step * 3f * expandedAnimationValue);
-        
         float alpha = Math.max(0f, Math.min(1f, expandedAnimationValue));
+        updateMenuButtonsLayout(alpha);
         int bgColor = ContextCompat.getColor(getContext(), R.color.menu_surface_alt);
         int textColor = ContextCompat.getColor(getContext(), R.color.menu_text_primary);
 
         for (MenuButton button : menuButtons) {
             float cy = button.y;
-            // Place pills ABOVE the FAB, centered on it.
-            float desiredLeft = mainFabX - (pillWidth / 2f);
-            float minLeft = screenPadding;
-            float maxLeft = Math.max(minLeft, screenWidth - screenPadding - pillWidth);
-            float pillLeft = Math.max(minLeft, Math.min(desiredLeft, maxLeft));
-            float pillRight = pillLeft + pillWidth;
-            float pillTop = cy - (pillHeight / 2f);
-            float pillBottom = cy + (pillHeight / 2f);
-
-            button.hitRect.set(pillLeft, pillTop, pillRight, pillBottom);
 
             // Fill
             menuPaint.setStyle(Paint.Style.FILL);
@@ -283,6 +274,7 @@ public class FloatingActionButton extends View {
             canvas.drawRoundRect(button.hitRect, pillRadius, pillRadius, menuStrokePaint);
 
             // Icon bubble
+            float pillLeft = button.hitRect.left;
             float iconCx = pillLeft + dpToPx(24);
             float iconCy = cy;
             float iconR = dpToPx(12);
@@ -314,19 +306,56 @@ public class FloatingActionButton extends View {
             canvas.drawText(button.text != null ? button.text : "", textX, textBase, menuTextPaint);
         }
     }
+
+    private void updateMenuButtonsLayout(float alpha) {
+        // Pill geometry (matches the screenshot style)
+        float pillHeight = dpToPx(44);
+        float pillWidth = dpToPx(172);
+        float step = pillHeight + dpToPx(14);
+        float screenPadding = dpToPx(16);
+        float viewWidth = getWidth() > 0 ? getWidth() : screenWidth;
+
+        // All stacked ABOVE the main FAB (closest first)
+        menuButtons[GOALS_BUTTON].x = mainFabX;
+        menuButtons[GOALS_BUTTON].y = mainFabY - (step * 1f * alpha);
+
+        menuButtons[WALLPAPER_BUTTON].x = mainFabX;
+        menuButtons[WALLPAPER_BUTTON].y = mainFabY - (step * 2f * alpha);
+
+        menuButtons[IMAGE_BUTTON].x = mainFabX;
+        menuButtons[IMAGE_BUTTON].y = mainFabY - (step * 3f * alpha);
+
+        for (MenuButton button : menuButtons) {
+            float cy = button.y;
+            float desiredLeft = mainFabX - (pillWidth / 2f);
+            float minLeft = screenPadding;
+            float maxLeft = Math.max(minLeft, viewWidth - screenPadding - pillWidth);
+            float pillLeft = Math.max(minLeft, Math.min(desiredLeft, maxLeft));
+            float pillRight = pillLeft + pillWidth;
+            float pillTop = cy - (pillHeight / 2f);
+            float pillBottom = cy + (pillHeight / 2f);
+
+            button.hitRect.set(pillLeft, pillTop, pillRight, pillBottom);
+            button.touchRect.set(button.hitRect);
+            // Slightly larger touch target for reliable tapping.
+            button.touchRect.inset(-dpToPx(10), -dpToPx(10));
+        }
+    }
     
     @Override
     public boolean onTouchEvent(MotionEvent event) {
         switch (event.getAction()) {
             case MotionEvent.ACTION_DOWN:
-                float touchX = event.getRawX();
-                float touchY = event.getRawY() - statusBarHeight;
+                float touchX = event.getX();
+                float touchY = event.getY();
                 
                 // Check if touching any menu button first (when expanded)
-                if (isExpanded && expandedAnimationValue > 0.2f) {
+                if ((isExpanded || expandedAnimationValue > 0f) && expandedAnimationValue > 0f) {
+                    updateMenuButtonsLayout(Math.max(0f, Math.min(1f, expandedAnimationValue)));
                     for (int i = 0; i < menuButtons.length; i++) {
                         MenuButton button = menuButtons[i];
                         if (button.contains(touchX, touchY)) {
+                            getParent().requestDisallowInterceptTouchEvent(true);
                             handleMenuButtonClick(i);
                             collapse();
                             ignoreNextUp = true;
@@ -339,6 +368,7 @@ public class FloatingActionButton extends View {
                 float distanceToMain = distance(touchX, touchY, mainFabX, mainFabY);
                 
                 if (distanceToMain <= mainFabRadius + dpToPx(20)) {
+                    getParent().requestDisallowInterceptTouchEvent(true);
                     // Start drag or expand/collapse
                     isDragging = false;
                     touchStartX = touchX;
@@ -351,6 +381,7 @@ public class FloatingActionButton extends View {
 
                 // If menu is open and user taps anywhere else, close it.
                 if (isExpanded && expandedAnimationValue > 0f) {
+                    getParent().requestDisallowInterceptTouchEvent(true);
                     collapse();
                     // Prevent ACTION_UP from toggling it open again.
                     ignoreNextUp = true;
@@ -359,8 +390,8 @@ public class FloatingActionButton extends View {
                 break;
                 
             case MotionEvent.ACTION_MOVE:
-                float moveX = event.getRawX();
-                float moveY = event.getRawY() - statusBarHeight;
+                float moveX = event.getX();
+                float moveY = event.getY();
                 
                 float moveDistance = distance(moveX, moveY, touchStartX, touchStartY);
                 
@@ -370,13 +401,17 @@ public class FloatingActionButton extends View {
                 }
                 
                 if (isDragging) {
+                    getParent().requestDisallowInterceptTouchEvent(true);
                     // Update position while dragging
                     mainFabX = moveX - dragOffsetX;
                     mainFabY = moveY - dragOffsetY;
                     
                     // Clamp to screen bounds
-                    mainFabX = Math.max(mainFabRadius + dpToPx(5), Math.min(mainFabX, screenWidth - mainFabRadius - dpToPx(5)));
-                    mainFabY = Math.max(mainFabRadius + statusBarHeight + dpToPx(5), Math.min(mainFabY, screenHeight - mainFabRadius - dpToPx(20)));
+                    float viewWidth = getWidth() > 0 ? getWidth() : screenWidth;
+                    float viewHeight = getHeight() > 0 ? getHeight() : screenHeight;
+                    float padding = dpToPx(5);
+                    mainFabX = Math.max(mainFabRadius + padding, Math.min(mainFabX, viewWidth - mainFabRadius - padding));
+                    mainFabY = Math.max(mainFabRadius + padding, Math.min(mainFabY, viewHeight - mainFabRadius - padding));
                     
                     invalidate();
                 }
@@ -394,11 +429,22 @@ public class FloatingActionButton extends View {
                 } else {
                     // Toggle expand/collapse on main FAB click
                     setExpanded(!isExpanded);
+                    performClick();
                 }
+                return true;
+
+            case MotionEvent.ACTION_CANCEL:
+                ignoreNextUp = false;
+                isDragging = false;
                 return true;
         }
         
         return super.onTouchEvent(event);
+    }
+
+    @Override
+    public boolean performClick() {
+        return super.performClick();
     }
     
     private void setExpanded(boolean expanded) {
