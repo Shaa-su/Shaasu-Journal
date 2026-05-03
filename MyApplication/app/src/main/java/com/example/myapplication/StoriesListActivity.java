@@ -5,7 +5,10 @@ import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.ImageButton;
+import android.widget.LinearLayout;
 import android.widget.ListView;
+import android.widget.TextView;
 import androidx.appcompat.app.AppCompatActivity;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -16,7 +19,11 @@ import java.util.regex.Pattern;
 public class StoriesListActivity extends AppCompatActivity {
 
     private ListView storiesListView;
-    private Button backButton;
+    private ImageButton backButton;
+    private LinearLayout emptyStateContainer;
+    private Button openCalendarButton;
+    private TextView countBadge;
+    private com.google.android.material.floatingactionbutton.FloatingActionButton calendarFab;
     private ArrayAdapter<String> adapter;
     private List<String> storiesList;
     private final List<String> storyDateKeys = new ArrayList<>();
@@ -31,6 +38,10 @@ public class StoriesListActivity extends AppCompatActivity {
         
         storiesListView = findViewById(R.id.storiesListView);
         backButton = findViewById(R.id.backButton);
+        emptyStateContainer = findViewById(R.id.emptyStateContainer);
+        openCalendarButton = findViewById(R.id.openCalendarButton);
+        countBadge = findViewById(R.id.countBadge);
+        calendarFab = findViewById(R.id.calendarFab);
         
         storiesList = new ArrayList<>();
         
@@ -79,6 +90,21 @@ public class StoriesListActivity extends AppCompatActivity {
         
         // Back button
         backButton.setOnClickListener(v -> finish());
+
+        if (openCalendarButton != null) {
+            openCalendarButton.setOnClickListener(v -> {
+                openCalendar();
+            });
+        }
+
+        if (calendarFab != null) {
+            calendarFab.setOnClickListener(v -> openCalendar());
+        }
+    }
+
+    private void openCalendar() {
+        Intent intent = new Intent(StoriesListActivity.this, CalendarActivity.class);
+        startActivity(intent);
     }
     
     private void loadAllStories() {
@@ -87,11 +113,23 @@ public class StoriesListActivity extends AppCompatActivity {
         
         storiesList.clear();
         storyDateKeys.clear();
+
+        int storyCount = 0;
+        for (Map.Entry<String, ?> entry : allStories.entrySet()) {
+            if (entry.getValue() instanceof String) storyCount++;
+        }
+
+        if (countBadge != null) {
+            countBadge.setText(String.valueOf(storyCount));
+        }
         
         if (allStories.isEmpty()) {
-            storiesList.add("No stories created yet. Start writing!");
-            storyDateKeys.add(null);
+            if (storiesListView != null) storiesListView.setVisibility(android.view.View.GONE);
+            if (emptyStateContainer != null) emptyStateContainer.setVisibility(android.view.View.VISIBLE);
         } else {
+            if (emptyStateContainer != null) emptyStateContainer.setVisibility(android.view.View.GONE);
+            if (storiesListView != null) storiesListView.setVisibility(android.view.View.VISIBLE);
+
             // Sort dates in reverse order (newest first)
             List<String> dates = new ArrayList<>(allStories.keySet());
             Collections.sort(dates, Collections.reverseOrder());

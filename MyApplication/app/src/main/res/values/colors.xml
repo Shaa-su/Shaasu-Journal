@@ -16,4 +16,9 @@
     <color name="menu_teal_icon_bg">#FF0F9F92</color>
     <color name="menu_text_primary">#FFFFFFFF</color>
     <color name="menu_text_secondary">#FF9AA6B2</color>
+
+    <!-- FAB (glow accents) -->
+    <color name="fab_image">#FF8B5CF6</color>
+    <color name="fab_wallpaper">#FFF59E0B</color>
+    <color name="fab_goals">#FF22C55E</color>
 </resources>

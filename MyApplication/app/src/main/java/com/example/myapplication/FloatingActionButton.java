@@ -4,15 +4,15 @@ import android.content.Context;
 import android.content.res.Resources;
 import android.graphics.Canvas;
 import android.graphics.Paint;
-import android.graphics.PointF;
+import android.graphics.RectF;
 import android.util.AttributeSet;
 import android.util.DisplayMetrics;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowManager;
 import android.animation.ObjectAnimator;
-import android.animation.AnimatorSet;
-import android.util.Property;
+
+import androidx.core.content.ContextCompat;
 
 public class FloatingActionButton extends View {
     
@@ -20,7 +20,8 @@ public class FloatingActionButton extends View {
     private float mainFabRadius = 50f; // 100dp diameter
     private float mainFabX;
     private float mainFabY;
-    private float mainFabColor = 0xFF2196F3;
+    private int mainFabColor;
+    private int mainFabExpandedColor;
     
     // Menu properties
     private float menuButtonRadius = 37.5f; // 75dp diameter
@@ -44,8 +45,11 @@ public class FloatingActionButton extends View {
     
     // Paint objects
     private Paint mainPaint;
+    private Paint mainGlowPaint;
     private Paint menuPaint;
+    private Paint menuStrokePaint;
     private Paint textPaint;
+    private Paint menuTextPaint;
     private Paint overlayPaint;
     
     // Screen dimensions
@@ -70,6 +74,11 @@ public class FloatingActionButton extends View {
         int color;
         String label;
         int textColor;
+
+        // Hit target for pill buttons
+        final RectF hitRect = new RectF();
+        String text;
+        String icon;
         
         MenuButton(float x, float y, float radius, int color, String label) {
             this.x = x;
@@ -78,6 +87,10 @@ public class FloatingActionButton extends View {
             this.color = color;
             this.label = label;
             this.textColor = 0xFFffffff;
+        }
+
+        boolean contains(float px, float py) {
+            return hitRect.contains(px, py);
         }
     }
     
@@ -113,33 +126,57 @@ public class FloatingActionButton extends View {
             statusBarHeight = dpToPx(25);
         }
         
+        // Enable software rendering so shadow glows are visible
+        setLayerType(LAYER_TYPE_SOFTWARE, null);
+
+        mainFabColor = ContextCompat.getColor(context, R.color.menu_teal);
+        mainFabExpandedColor = ContextCompat.getColor(context, R.color.menu_surface_alt);
+
         // Initialize position to bottom-right corner
         mainFabX = screenWidth - dpToPx(50) - dpToPx(16);
         mainFabY = screenHeight - dpToPx(50) - dpToPx(16);
         
         // Initialize paint objects
         mainPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        mainPaint.setColor((int) mainFabColor);
+        mainPaint.setColor(mainFabColor);
         mainPaint.setStyle(Paint.Style.FILL);
-        mainPaint.setShadowLayer(dpToPx(4), 0, dpToPx(2), 0x40000000);
+
+        mainGlowPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        mainGlowPaint.setStyle(Paint.Style.FILL);
         
         menuPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         menuPaint.setStyle(Paint.Style.FILL);
-        menuPaint.setShadowLayer(dpToPx(2), 0, dpToPx(1), 0x40000000);
+
+        menuStrokePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        menuStrokePaint.setStyle(Paint.Style.STROKE);
+        menuStrokePaint.setStrokeWidth(dpToPx(1.6f));
         
         textPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         textPaint.setColor(0xFFffffff);
         textPaint.setTextSize(dpToPx(14));
         textPaint.setTextAlign(Paint.Align.CENTER);
+
+        menuTextPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        menuTextPaint.setColor(0xFFFFFFFF);
+        menuTextPaint.setTextSize(dpToPx(14));
+        menuTextPaint.setTextAlign(Paint.Align.LEFT);
         
         overlayPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         overlayPaint.setColor(0x66000000);
         overlayPaint.setStyle(Paint.Style.FILL);
         
         // Initialize menu buttons
-        menuButtons[IMAGE_BUTTON] = new MenuButton(0, 0, menuButtonRadius, 0xFF2196F3, "🖼");
-        menuButtons[GOALS_BUTTON] = new MenuButton(0, 0, menuButtonRadius, 0xFFFF9800, "✓");
-        menuButtons[WALLPAPER_BUTTON] = new MenuButton(0, 0, menuButtonRadius, 0xFFf44336, "🎨");
+        menuButtons[IMAGE_BUTTON] = new MenuButton(0, 0, menuButtonRadius, ContextCompat.getColor(context, R.color.fab_image), "");
+        menuButtons[IMAGE_BUTTON].text = "Insert Image";
+        menuButtons[IMAGE_BUTTON].icon = "🖼";
+
+        menuButtons[WALLPAPER_BUTTON] = new MenuButton(0, 0, menuButtonRadius, ContextCompat.getColor(context, R.color.fab_wallpaper), "");
+        menuButtons[WALLPAPER_BUTTON].text = "Set Wallpaper";
+        menuButtons[WALLPAPER_BUTTON].icon = "✦";
+
+        menuButtons[GOALS_BUTTON] = new MenuButton(0, 0, menuButtonRadius, ContextCompat.getColor(context, R.color.fab_goals), "");
+        menuButtons[GOALS_BUTTON].text = "Goals";
+        menuButtons[GOALS_BUTTON].icon = "◎";
         
         setWillNotDraw(false);
     }
@@ -164,20 +201,43 @@ public class FloatingActionButton extends View {
     }
     
     private void drawMainFab(Canvas canvas) {
+        float t = Math.max(0f, Math.min(1f, expandedAnimationValue));
+
+        // Blend teal -> surface when expanded
+        int fill = lerpColor(mainFabColor, mainFabExpandedColor, t);
+        mainPaint.setColor(fill);
         mainPaint.setAlpha(255);
+
+        // Glow halo fades out as it expands
+        float glowStrength = 1f - t;
+        int glowColor = withAlpha(mainFabColor, 0.70f * glowStrength);
+        mainGlowPaint.setColor(withAlpha(mainFabColor, 0.20f * glowStrength));
+        mainGlowPaint.setShadowLayer(dpToPx(18) * glowStrength, 0, 0, glowColor);
+        if (glowStrength > 0.01f) {
+            canvas.drawCircle(mainFabX, mainFabY, mainFabRadius - dpToPx(2), mainGlowPaint);
+        }
+
+        // Main circle
+        mainGlowPaint.setShadowLayer(0, 0, 0, 0);
         canvas.drawCircle(mainFabX, mainFabY, mainFabRadius, mainPaint);
-        
-        // Draw icon for main FAB
+
+        // Draw icon for main FAB (true centered baseline)
         textPaint.setTextSize(dpToPx(28));
-        textPaint.setColor(0xFFffffff);
-        String mainIcon = "+";
-        canvas.drawText(mainIcon, mainFabX, mainFabY + dpToPx(7), textPaint);
+        textPaint.setColor(0xFFFFFFFF);
+        textPaint.setTextAlign(Paint.Align.CENTER);
+        String mainIcon = (isExpanded || expandedAnimationValue > 0.5f) ? "×" : "+";
+        Paint.FontMetrics fm = textPaint.getFontMetrics();
+        float baseline = mainFabY - (fm.ascent + fm.descent) / 2f;
+        canvas.drawText(mainIcon, mainFabX, baseline, textPaint);
     }
     
     private void drawMenuButtons(Canvas canvas) {
-        // Space buttons with a fixed step so they are not compressed.
-        // Use expandedAnimationValue to animate from the FAB position.
-        float step = (menuButtonRadius * 2f) + dpToPx(18);
+        // Pill geometry (matches the screenshot style)
+        float pillHeight = dpToPx(44);
+        float pillWidth = dpToPx(172);
+        float pillRadius = pillHeight / 2f;
+        float step = pillHeight + dpToPx(14);
+        float screenPadding = dpToPx(16);
 
         // All stacked ABOVE the main FAB (closest first), to avoid overlap with the main FAB.
         menuButtons[GOALS_BUTTON].x = mainFabX;
@@ -189,16 +249,69 @@ public class FloatingActionButton extends View {
         menuButtons[IMAGE_BUTTON].x = mainFabX;
         menuButtons[IMAGE_BUTTON].y = mainFabY - (step * 3f * expandedAnimationValue);
         
-        // Draw each menu button
+        float alpha = Math.max(0f, Math.min(1f, expandedAnimationValue));
+        int bgColor = ContextCompat.getColor(getContext(), R.color.menu_surface_alt);
+        int textColor = ContextCompat.getColor(getContext(), R.color.menu_text_primary);
+
         for (MenuButton button : menuButtons) {
-            menuPaint.setColor(button.color);
-            menuPaint.setAlpha((int) (255 * expandedAnimationValue));
-            canvas.drawCircle(button.x, button.y, button.radius, menuPaint);
-            
-            // Draw label/icon
-            textPaint.setTextSize(dpToPx(18));
-            textPaint.setColor(button.textColor);
-            canvas.drawText(button.label, button.x, button.y + dpToPx(5), textPaint);
+            float cy = button.y;
+            // Place pills ABOVE the FAB, centered on it.
+            float desiredLeft = mainFabX - (pillWidth / 2f);
+            float minLeft = screenPadding;
+            float maxLeft = Math.max(minLeft, screenWidth - screenPadding - pillWidth);
+            float pillLeft = Math.max(minLeft, Math.min(desiredLeft, maxLeft));
+            float pillRight = pillLeft + pillWidth;
+            float pillTop = cy - (pillHeight / 2f);
+            float pillBottom = cy + (pillHeight / 2f);
+
+            button.hitRect.set(pillLeft, pillTop, pillRight, pillBottom);
+
+            // Fill
+            menuPaint.setStyle(Paint.Style.FILL);
+            menuPaint.setColor(withAlpha(bgColor, 0.92f * alpha));
+            canvas.drawRoundRect(button.hitRect, pillRadius, pillRadius, menuPaint);
+
+            // Glow stroke
+            int strokeColor = withAlpha(button.color, 0.95f * alpha);
+            int glowStroke = withAlpha(button.color, 0.70f * alpha);
+            menuStrokePaint.setColor(strokeColor);
+            menuStrokePaint.setShadowLayer(dpToPx(10), 0, 0, glowStroke);
+            canvas.drawRoundRect(button.hitRect, pillRadius, pillRadius, menuStrokePaint);
+
+            // Crisp stroke
+            menuStrokePaint.setShadowLayer(0, 0, 0, 0);
+            canvas.drawRoundRect(button.hitRect, pillRadius, pillRadius, menuStrokePaint);
+
+            // Icon bubble
+            float iconCx = pillLeft + dpToPx(24);
+            float iconCy = cy;
+            float iconR = dpToPx(12);
+            RectF iconRect = new RectF(iconCx - iconR, iconCy - iconR, iconCx + iconR, iconCy + iconR);
+
+            menuPaint.setColor(withAlpha(bgColor, 1.0f * alpha));
+            canvas.drawOval(iconRect, menuPaint);
+
+            menuStrokePaint.setColor(strokeColor);
+            menuStrokePaint.setShadowLayer(dpToPx(10), 0, 0, glowStroke);
+            canvas.drawOval(iconRect, menuStrokePaint);
+            menuStrokePaint.setShadowLayer(0, 0, 0, 0);
+            canvas.drawOval(iconRect, menuStrokePaint);
+
+            // Icon text
+            textPaint.setTextAlign(Paint.Align.CENTER);
+            textPaint.setTextSize(dpToPx(14));
+            textPaint.setColor(withAlpha(textColor, alpha));
+            Paint.FontMetrics fmI = textPaint.getFontMetrics();
+            float iconBase = iconCy - (fmI.ascent + fmI.descent) / 2f;
+            canvas.drawText(button.icon != null ? button.icon : "", iconCx, iconBase, textPaint);
+
+            // Label
+            menuTextPaint.setColor(withAlpha(textColor, alpha));
+            menuTextPaint.setTextSize(dpToPx(14));
+            Paint.FontMetrics fm = menuTextPaint.getFontMetrics();
+            float textBase = cy - (fm.ascent + fm.descent) / 2f;
+            float textX = iconCx + dpToPx(18);
+            canvas.drawText(button.text != null ? button.text : "", textX, textBase, menuTextPaint);
         }
     }
     
@@ -213,9 +326,7 @@ public class FloatingActionButton extends View {
                 if (isExpanded && expandedAnimationValue > 0.2f) {
                     for (int i = 0; i < menuButtons.length; i++) {
                         MenuButton button = menuButtons[i];
-                        float distanceToButton = distance(touchX, touchY, button.x, button.y);
-                        // Slightly smaller hit slop so taps don't overlap adjacent buttons
-                        if (distanceToButton <= button.radius + dpToPx(12)) {
+                        if (button.contains(touchX, touchY)) {
                             handleMenuButtonClick(i);
                             collapse();
                             ignoreNextUp = true;
@@ -381,5 +492,29 @@ public class FloatingActionButton extends View {
     
     private float dpToPx(float dp) {
         return dp * Resources.getSystem().getDisplayMetrics().density;
+    }
+
+    private int withAlpha(int color, float alpha01) {
+        int a = Math.max(0, Math.min(255, (int) (255f * alpha01)));
+        return (color & 0x00FFFFFF) | (a << 24);
+    }
+
+    private int lerpColor(int from, int to, float t) {
+        t = Math.max(0f, Math.min(1f, t));
+        int a1 = (from >> 24) & 0xFF;
+        int r1 = (from >> 16) & 0xFF;
+        int g1 = (from >> 8) & 0xFF;
+        int b1 = from & 0xFF;
+
+        int a2 = (to >> 24) & 0xFF;
+        int r2 = (to >> 16) & 0xFF;
+        int g2 = (to >> 8) & 0xFF;
+        int b2 = to & 0xFF;
+
+        int a = (int) (a1 + (a2 - a1) * t);
+        int r = (int) (r1 + (r2 - r1) * t);
+        int g = (int) (g1 + (g2 - g1) * t);
+        int b = (int) (b1 + (b2 - b1) * t);
+        return (a << 24) | (r << 16) | (g << 8) | b;
     }
 }

@@ -23,6 +23,7 @@ import android.widget.Toast;
 import android.view.ScaleGestureDetector;
 import android.view.View;
 import android.view.WindowManager;
+import android.widget.ImageButton;
 import androidx.appcompat.app.AppCompatActivity;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -42,9 +43,10 @@ public class StoryDetailActivity extends AppCompatActivity {
     private LinearLayout goalsModal;
     private Button addGoalButton;
     private Button saveButton;
-    private LinearLayout topBar;
+    private View topBar;
     private FloatingActionButton customFab;
     private ImageView wallpaperImageView;
+    private ImageButton backButton;
     
     private int selectedDay;
     private int selectedMonth;
@@ -89,6 +91,7 @@ public class StoryDetailActivity extends AppCompatActivity {
         topBar = findViewById(R.id.topBar);
         customFab = findViewById(R.id.customFab);
         wallpaperImageView = findViewById(R.id.wallpaperImageView);
+        backButton = findViewById(R.id.backButton);
         // Keep wallpaper fully opaque; overlay controls readability
         wallpaperImageView.setAlpha(1f);
         
@@ -102,7 +105,14 @@ public class StoryDetailActivity extends AppCompatActivity {
         String[] monthNames = {"January", "February", "March", "April", "May", "June",
                               "July", "August", "September", "October", "November", "December"};
         String dateStr = monthNames[selectedMonth] + " " + selectedDay + ", " + selectedYear;
-        dateDisplayText.setText("Date: " + dateStr);
+        dateDisplayText.setText(dateStr);
+
+        if (backButton != null) {
+            backButton.setOnClickListener(v -> {
+                dismissInlineImageResizePopup();
+                finish();
+            });
+        }
         
         // Load existing story if available
         loadStory();
