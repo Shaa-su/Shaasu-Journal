@@ -58,6 +58,10 @@ public class StoryDetailActivity extends AppCompatActivity {
     private ImageView wallpaperImageView;
     private ImageButton backButton;
 
+    // Mood picker
+    private LinearLayout moodOptionsContainer;
+    private String selectedMoodId;
+
     // Top-bar goal tracker
     private View goalTrackerPill;
     private TextView goalTrackerText;
@@ -89,6 +93,9 @@ public class StoryDetailActivity extends AppCompatActivity {
     private static final int DEFAULT_INLINE_IMAGE_WIDTH_PX = 300;
     private static final int RESIZE_SEEKBAR_MAX = 5000;
 
+    private static final String MOOD_MARKER = "[MOOD_MARKER]";
+    private static final String WALLPAPER_MARKER = "[WALLPAPER_MARKER]";
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -100,6 +107,7 @@ public class StoryDetailActivity extends AppCompatActivity {
         dateDisplayText = findViewById(R.id.dateDisplayText);
         titleEditText = findViewById(R.id.titleEditText);
         storyEditText = findViewById(R.id.storyEditText);
+        moodOptionsContainer = findViewById(R.id.moodOptionsContainer);
         goalsContainer = findViewById(R.id.goalsContainer);
         goalsModal = findViewById(R.id.goalsModal);
         goalsBackdrop = findViewById(R.id.goalsBackdrop);
@@ -144,6 +152,9 @@ public class StoryDetailActivity extends AppCompatActivity {
         
         // Load existing story if available
         loadStory();
+
+        setupMoodOptions();
+        updateMoodSelectionUi();
 
         // Ensure tracker is correct even when no story exists yet
         updateTopGoalTracker();
@@ -834,10 +845,14 @@ public class StoryDetailActivity extends AppCompatActivity {
             wallpaperEncoded = encodeImageToBase64(wallpaperBitmap);
         }
         
-        // Format: title||story||goals[WALLPAPER_MARKER]wallpaperBase64
+        // Format: title||story||goals[MOOD_MARKER]moodId[WALLPAPER_MARKER]wallpaperBase64
+        // NOTE: markers are optional; keep backward compatibility.
         String storyData = title + "||" + storyWithPlaceholders + "||" + goalsData.toString();
+        if (selectedMoodId != null && !selectedMoodId.trim().isEmpty()) {
+            storyData += MOOD_MARKER + selectedMoodId.trim();
+        }
         if (!wallpaperEncoded.isEmpty()) {
-            storyData += "[WALLPAPER_MARKER]" + wallpaperEncoded;
+            storyData += WALLPAPER_MARKER + wallpaperEncoded;
         }
         
         editor.putString(dateKey, storyData);
@@ -933,12 +948,18 @@ public class StoryDetailActivity extends AppCompatActivity {
         if (storyData != null) {
             // First, extract wallpaper if present
             String wallpaperEncoded = "";
-            if (storyData.contains("[WALLPAPER_MARKER]")) {
-                String[] wallpaperParts = storyData.split("\\[WALLPAPER_MARKER\\]");
-                storyData = wallpaperParts[0]; // Main data without wallpaper
-                if (wallpaperParts.length > 1) {
-                    wallpaperEncoded = wallpaperParts[1];
-                }
+            int wpIndex = storyData.indexOf(WALLPAPER_MARKER);
+            if (wpIndex >= 0) {
+                wallpaperEncoded = storyData.substring(wpIndex + WALLPAPER_MARKER.length());
+                storyData = storyData.substring(0, wpIndex);
+            }
+
+            // Extract mood marker (if present) BEFORE parsing legacy title/story/goals.
+            selectedMoodId = null;
+            int moodIndex = storyData.indexOf(MOOD_MARKER);
+            if (moodIndex >= 0) {
+                selectedMoodId = storyData.substring(moodIndex + MOOD_MARKER.length()).trim();
+                storyData = storyData.substring(0, moodIndex);
             }
 
             // Legacy format: title||story||goals (goals separated by |||)
@@ -988,6 +1009,54 @@ public class StoryDetailActivity extends AppCompatActivity {
                     wallpaperImageView.setImageBitmap(wallpaper);
                     wallpaperImageView.setAlpha(1f);
                 }
+            }
+        }
+    }
+
+    private void setupMoodOptions() {
+        if (moodOptionsContainer == null) return;
+
+        moodOptionsContainer.removeAllViews();
+        android.view.LayoutInflater inflater = android.view.LayoutInflater.from(this);
+        for (Mood mood : Mood.all()) {
+            View option = inflater.inflate(R.layout.item_mood_option, moodOptionsContainer, false);
+            option.setTag(mood.id);
+
+            TextView emoji = option.findViewById(R.id.moodEmoji);
+            TextView label = option.findViewById(R.id.moodLabel);
+            if (emoji != null) emoji.setText(mood.emoji);
+            if (label != null) label.setText(mood.label);
+
+            option.setOnClickListener(v -> {
+                String id = (String) v.getTag();
+                if (id != null && id.equals(selectedMoodId)) {
+                    selectedMoodId = null; // allow clearing mood
+                } else {
+                    selectedMoodId = id;
+                }
+                updateMoodSelectionUi();
+            });
+
+            moodOptionsContainer.addView(option);
+        }
+    }
+
+    private void updateMoodSelectionUi() {
+        if (moodOptionsContainer == null) return;
+
+        for (int i = 0; i < moodOptionsContainer.getChildCount(); i++) {
+            View option = moodOptionsContainer.getChildAt(i);
+            String id = option != null ? (String) option.getTag() : null;
+            boolean selected = id != null && id.equals(selectedMoodId);
+
+            TextView emoji = option.findViewById(R.id.moodEmoji);
+            TextView label = option.findViewById(R.id.moodLabel);
+
+            if (emoji != null) {
+                emoji.setBackgroundResource(selected ? R.drawable.bg_mood_circle_selected : R.drawable.bg_mood_circle);
+            }
+            if (label != null) {
+                label.setAlpha(selected ? 1f : 0.85f);
             }
         }
     }

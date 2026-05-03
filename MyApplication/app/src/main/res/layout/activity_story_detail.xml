@@ -195,6 +195,24 @@
                     android:alpha="0.18"
                     android:background="@color/menu_text_secondary" />
 
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="18dp"
+                    android:text="HOW ARE YOU FEELING?"
+                    android:textColor="@color/menu_text_secondary"
+                    android:textSize="11sp"
+                    android:letterSpacing="0.08"
+                    android:textStyle="bold" />
+
+                <LinearLayout
+                    android:id="@+id/moodOptionsContainer"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:orientation="horizontal"
+                    android:weightSum="10" />
+
                 <EditText
                     android:id="@+id/storyEditText"
                     android:layout_width="match_parent"

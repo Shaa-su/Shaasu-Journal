@@ -30,6 +30,7 @@ public class StoriesListActivity extends AppCompatActivity {
 
     private static final Pattern IMAGE_PLACEHOLDER_PATTERN = Pattern.compile("\\[IMG:(.+?)\\]", Pattern.DOTALL);
     private static final String WALLPAPER_MARKER = "[WALLPAPER_MARKER]";
+    private static final String MOOD_MARKER = "[MOOD_MARKER]";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -143,6 +144,11 @@ public class StoriesListActivity extends AppCompatActivity {
                     int markerIndex = storyDataForPreview.indexOf(WALLPAPER_MARKER);
                     if (markerIndex >= 0) {
                         storyDataForPreview = storyDataForPreview.substring(0, markerIndex);
+                    }
+
+                    int moodIndex = storyDataForPreview.indexOf(MOOD_MARKER);
+                    if (moodIndex >= 0) {
+                        storyDataForPreview = storyDataForPreview.substring(0, moodIndex);
                     }
 
                     // Legacy format: title||story||goals (goals separated by |||)

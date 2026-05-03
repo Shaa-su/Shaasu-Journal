@@ -25,4 +25,14 @@
         android:visibility="gone"
         android:background="@drawable/bg_cal_dot_today" />
 
+    <TextView
+        android:id="@+id/moodEmoji"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|center_horizontal"
+        android:layout_marginBottom="0dp"
+        android:visibility="gone"
+        android:text="😊"
+        android:textSize="12sp" />
+
 </FrameLayout>
