@@ -35,6 +35,13 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent">
 
+            <androidx.constraintlayout.widget.Barrier
+                android:id="@+id/topBarEndActionsBarrier"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                app:barrierDirection="start"
+                app:constraint_referenced_ids="goalTrackerPill,saveButton" />
+
             <ImageButton
                 android:id="@+id/backButton"
                 android:layout_width="40dp"
@@ -50,13 +57,18 @@
 
             <TextView
                 android:id="@+id/dateDisplayText"
-                android:layout_width="wrap_content"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:text="May 2, 2026"
                 android:textColor="@color/menu_text_secondary"
                 android:textSize="14sp"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintEnd_toEndOf="parent"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:gravity="center"
+                android:layout_marginStart="12dp"
+                android:layout_marginEnd="12dp"
+                app:layout_constraintStart_toEndOf="@+id/backButton"
+                app:layout_constraintEnd_toStartOf="@+id/topBarEndActionsBarrier"
                 app:layout_constraintTop_toTopOf="parent"
                 app:layout_constraintBottom_toBottomOf="parent" />
 
@@ -77,6 +89,57 @@
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintTop_toTopOf="parent"
                 app:layout_constraintBottom_toBottomOf="parent" />
+
+            <LinearLayout
+                android:id="@+id/goalTrackerPill"
+                android:layout_width="wrap_content"
+                android:layout_height="34dp"
+                android:layout_marginEnd="10dp"
+                android:background="@drawable/bg_goal_tracker_pill"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingStart="10dp"
+                android:paddingEnd="12dp"
+                android:visibility="gone"
+                android:clickable="true"
+                android:focusable="true"
+                app:layout_constraintEnd_toStartOf="@+id/saveButton"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintBottom_toBottomOf="parent">
+
+                <FrameLayout
+                    android:id="@+id/goalTrackerIconContainer"
+                    android:layout_width="18dp"
+                    android:layout_height="18dp">
+
+                    <View
+                        android:id="@+id/goalTrackerRing"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:background="@drawable/bg_goal_tracker_ring" />
+
+                    <ImageView
+                        android:id="@+id/goalTrackerCheck"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:padding="2dp"
+                        android:src="@drawable/ic_check_simple"
+                        android:tint="@color/fab_goals"
+                        android:visibility="gone" />
+
+                </FrameLayout>
+
+                <TextView
+                    android:id="@+id/goalTrackerText"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:text="0/0"
+                    android:textColor="@color/menu_text_secondary"
+                    android:textSize="12sp"
+                    android:textStyle="bold" />
+
+            </LinearLayout>
 
         </androidx.constraintlayout.widget.ConstraintLayout>
 
@@ -167,59 +230,205 @@
 
     </FrameLayout>
 
-    <!-- Goals Modal (Initially Hidden) -->
-    <LinearLayout
+    <!-- Goals Modal (Figma bottom sheet) -->
+    <FrameLayout
         android:id="@+id/goalsModal"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:orientation="vertical"
-        android:background="#00000080"
         android:visibility="gone"
-        android:gravity="center">
+        android:clickable="true"
+        android:focusable="true">
+
+        <View
+            android:id="@+id/goalsBackdrop"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="#00000080" />
 
         <LinearLayout
+            android:id="@+id/goalsSheet"
             android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom"
             android:orientation="vertical"
-            android:padding="16dp"
-            android:background="#2c2c2c"
-            android:layout_margin="16dp">
+            android:background="@drawable/bg_goals_sheet"
+            android:paddingStart="18dp"
+            android:paddingEnd="18dp"
+            android:paddingTop="10dp"
+            android:paddingBottom="18dp">
 
-            <TextView
+            <View
+                android:id="@+id/goalsHandle"
+                android:layout_width="40dp"
+                android:layout_height="4dp"
+                android:layout_gravity="center_horizontal"
+                android:background="@drawable/bg_goals_handle" />
+
+            <androidx.constraintlayout.widget.ConstraintLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="My Goals"
-                android:textSize="20sp"
-                android:textColor="#ffffff"
-                android:layout_marginBottom="16dp"
-                android:textStyle="bold" />
+                android:layout_marginTop="10dp">
 
-            <ScrollView
-                android:layout_width="match_parent"
-                android:layout_height="0dp"
-                android:layout_weight="1">
-
-                <LinearLayout
-                    android:id="@+id/goalsContainer"
-                    android:layout_width="match_parent"
+                <TextView
+                    android:id="@+id/goalsTitle"
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:orientation="vertical" />
+                    android:text="Goals"
+                    android:textColor="@color/menu_text_primary"
+                    android:textSize="18sp"
+                    android:textStyle="bold"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toTopOf="parent"
+                    app:layout_constraintEnd_toStartOf="@+id/goalsCloseButton" />
 
-            </ScrollView>
+                <TextView
+                    android:id="@+id/goalsCountText"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:text="0 of 0 completed"
+                    android:textColor="@color/menu_text_secondary"
+                    android:textSize="12sp"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toBottomOf="@+id/goalsTitle" />
+
+                <androidx.constraintlayout.widget.ConstraintLayout
+                    android:id="@+id/goalsProgressBar"
+                    android:layout_width="0dp"
+                    android:layout_height="3dp"
+                    android:layout_marginTop="10dp"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintTop_toBottomOf="@+id/goalsCountText">
+
+                    <View
+                        android:id="@+id/goalsProgressTrack"
+                        android:layout_width="0dp"
+                        android:layout_height="0dp"
+                        android:alpha="0.18"
+                        android:background="@drawable/bg_goals_progress_track"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintEnd_toEndOf="parent"
+                        app:layout_constraintTop_toTopOf="parent"
+                        app:layout_constraintBottom_toBottomOf="parent" />
+
+                    <View
+                        android:id="@+id/goalsProgressFill"
+                        android:layout_width="0dp"
+                        android:layout_height="0dp"
+                        android:background="@drawable/bg_goals_progress_fill"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toTopOf="parent"
+                        app:layout_constraintBottom_toBottomOf="parent"
+                        app:layout_constraintEnd_toEndOf="parent"
+                        app:layout_constraintWidth_percent="0" />
+
+                </androidx.constraintlayout.widget.ConstraintLayout>
+
+                <ImageButton
+                    android:id="@+id/goalsCloseButton"
+                    android:layout_width="34dp"
+                    android:layout_height="34dp"
+                    android:background="@drawable/bg_goals_icon_button"
+                    android:contentDescription="Close"
+                    android:src="@drawable/ic_close_simple"
+                    android:scaleType="center"
+                    android:tint="@color/menu_text_secondary"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintTop_toTopOf="parent"
+                    app:layout_constraintBottom_toBottomOf="@+id/goalsTitle" />
+
+            </androidx.constraintlayout.widget.ConstraintLayout>
+
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="220dp"
+                android:layout_marginTop="8dp">
+
+                <ScrollView
+                    android:id="@+id/goalsScroll"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:overScrollMode="never">
+
+                    <LinearLayout
+                        android:id="@+id/goalsContainer"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:paddingTop="10dp"
+                        android:paddingBottom="10dp" />
+
+                </ScrollView>
+
+                <TextView
+                    android:id="@+id/goalsEmptyText"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:gravity="center"
+                    android:text="No goals yet. Add one below!"
+                    android:textColor="@color/menu_text_secondary"
+                    android:textSize="13sp" />
+
+            </FrameLayout>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginTop="8dp"
+                android:alpha="0.12"
+                android:background="@color/menu_text_secondary" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <EditText
+                    android:id="@+id/addGoalEditText"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:background="@android:color/transparent"
+                    android:hint="Add a new goal..."
+                    android:imeOptions="actionDone"
+                    android:inputType="textCapSentences"
+                    android:paddingTop="10dp"
+                    android:paddingBottom="10dp"
+                    android:textColor="@color/menu_text_primary"
+                    android:textColorHint="@color/menu_text_secondary"
+                    android:textSize="14sp" />
+
+                <ImageButton
+                    android:id="@+id/addGoalButton"
+                    android:layout_width="38dp"
+                    android:layout_height="38dp"
+                    android:layout_marginStart="12dp"
+                    android:background="@drawable/bg_goals_icon_button"
+                    android:contentDescription="Add goal"
+                    android:src="@drawable/ic_add_simple"
+                    android:scaleType="center"
+                    android:tint="@color/menu_text_primary" />
+
+            </LinearLayout>
 
             <Button
-                android:id="@+id/addGoalButton"
+                android:id="@+id/doneGoalsButton"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="+ Add Goal"
-                android:background="#4CAF50"
-                android:textColor="#ffffff"
-                android:layout_marginTop="8dp" />
+                android:layout_height="52dp"
+                android:layout_marginTop="14dp"
+                android:background="@drawable/bg_goals_done_button"
+                android:text="Done"
+                android:textAllCaps="false"
+                android:textColor="@color/menu_text_primary"
+                android:textSize="14sp"
+                android:textStyle="bold" />
 
         </LinearLayout>
 
-    </LinearLayout>
+    </FrameLayout>
 
 </FrameLayout>
 

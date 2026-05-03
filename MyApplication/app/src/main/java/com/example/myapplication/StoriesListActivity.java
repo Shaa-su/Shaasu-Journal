@@ -145,10 +145,24 @@ public class StoriesListActivity extends AppCompatActivity {
                         storyDataForPreview = storyDataForPreview.substring(0, markerIndex);
                     }
 
-                    String[] parts = storyDataForPreview.split("\\|\\|");
-                    String title = parts.length > 0 ? parts[0] : "";
-                    String story = parts.length > 1 ? parts[1] : "";
-                    String goals = parts.length > 2 ? parts[2] : "";
+                    // Legacy format: title||story||goals (goals separated by |||)
+                    // IMPORTANT: do not split("||") because "|||" contains "||".
+                    String title = "";
+                    String story = "";
+                    String goals = "";
+                    int firstSep = storyDataForPreview.indexOf("||");
+                    if (firstSep < 0) {
+                        title = storyDataForPreview;
+                    } else {
+                        title = storyDataForPreview.substring(0, firstSep);
+                        int secondSep = storyDataForPreview.indexOf("||", firstSep + 2);
+                        if (secondSep < 0) {
+                            story = storyDataForPreview.substring(firstSep + 2);
+                        } else {
+                            story = storyDataForPreview.substring(firstSep + 2, secondSep);
+                            goals = storyDataForPreview.substring(secondSep + 2);
+                        }
+                    }
 
                     // Remove inline image placeholders from preview text
                     story = IMAGE_PLACEHOLDER_PATTERN.matcher(story).replaceAll("[image]");

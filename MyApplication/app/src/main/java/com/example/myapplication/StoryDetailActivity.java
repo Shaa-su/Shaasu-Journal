@@ -4,6 +4,7 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Paint;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.MediaStore;
@@ -12,7 +13,6 @@ import android.text.SpannableStringBuilder;
 import android.text.style.ImageSpan;
 import android.util.Base64;
 import android.widget.Button;
-import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -20,10 +20,12 @@ import android.widget.PopupWindow;
 import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.view.LayoutInflater;
 import android.view.ScaleGestureDetector;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.ImageButton;
+import android.view.inputmethod.EditorInfo;
 import androidx.appcompat.app.AppCompatActivity;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -40,13 +42,27 @@ public class StoryDetailActivity extends AppCompatActivity {
     private EditText titleEditText;
     private EditText storyEditText;
     private LinearLayout goalsContainer;
-    private LinearLayout goalsModal;
-    private Button addGoalButton;
+    private View goalsModal;
+    private View goalsBackdrop;
+    private View goalsSheet;
+    private TextView goalsEmptyText;
+    private TextView goalsCountText;
+    private View goalsProgressFill;
+    private EditText addGoalEditText;
+    private View addGoalButton;
+    private Button doneGoalsButton;
+    private ImageButton goalsCloseButton;
     private Button saveButton;
     private View topBar;
     private FloatingActionButton customFab;
     private ImageView wallpaperImageView;
     private ImageButton backButton;
+
+    // Top-bar goal tracker
+    private View goalTrackerPill;
+    private TextView goalTrackerText;
+    private View goalTrackerRing;
+    private ImageView goalTrackerCheck;
     
     private int selectedDay;
     private int selectedMonth;
@@ -86,9 +102,21 @@ public class StoryDetailActivity extends AppCompatActivity {
         storyEditText = findViewById(R.id.storyEditText);
         goalsContainer = findViewById(R.id.goalsContainer);
         goalsModal = findViewById(R.id.goalsModal);
+        goalsBackdrop = findViewById(R.id.goalsBackdrop);
+        goalsSheet = findViewById(R.id.goalsSheet);
+        goalsEmptyText = findViewById(R.id.goalsEmptyText);
+        goalsCountText = findViewById(R.id.goalsCountText);
+        goalsProgressFill = findViewById(R.id.goalsProgressFill);
+        addGoalEditText = findViewById(R.id.addGoalEditText);
         addGoalButton = findViewById(R.id.addGoalButton);
+        doneGoalsButton = findViewById(R.id.doneGoalsButton);
+        goalsCloseButton = findViewById(R.id.goalsCloseButton);
         saveButton = findViewById(R.id.saveButton);
         topBar = findViewById(R.id.topBar);
+        goalTrackerPill = findViewById(R.id.goalTrackerPill);
+        goalTrackerText = findViewById(R.id.goalTrackerText);
+        goalTrackerRing = findViewById(R.id.goalTrackerRing);
+        goalTrackerCheck = findViewById(R.id.goalTrackerCheck);
         customFab = findViewById(R.id.customFab);
         wallpaperImageView = findViewById(R.id.wallpaperImageView);
         backButton = findViewById(R.id.backButton);
@@ -117,6 +145,13 @@ public class StoryDetailActivity extends AppCompatActivity {
         // Load existing story if available
         loadStory();
 
+        // Ensure tracker is correct even when no story exists yet
+        updateTopGoalTracker();
+
+        if (goalTrackerPill != null) {
+            goalTrackerPill.setOnClickListener(v -> showGoalsModal());
+        }
+
         setupInlineImageResizeGesture();
 
         touchSlop = android.view.ViewConfiguration.get(this).getScaledTouchSlop();
@@ -130,8 +165,28 @@ public class StoryDetailActivity extends AppCompatActivity {
             if (!hasFocus) dismissInlineImageResizePopup();
         });
         
-        // Add Goal button click listener
-        addGoalButton.setOnClickListener(v -> addGoal(""));
+        // Goals sheet actions
+        if (goalsBackdrop != null) {
+            goalsBackdrop.setOnClickListener(v -> hideGoalsModal());
+        }
+        if (goalsCloseButton != null) {
+            goalsCloseButton.setOnClickListener(v -> hideGoalsModal());
+        }
+        if (doneGoalsButton != null) {
+            doneGoalsButton.setOnClickListener(v -> hideGoalsModal());
+        }
+        if (addGoalButton != null) {
+            addGoalButton.setOnClickListener(v -> submitNewGoalFromInput());
+        }
+        if (addGoalEditText != null) {
+            addGoalEditText.setOnEditorActionListener((v, actionId, event) -> {
+                if (actionId == EditorInfo.IME_ACTION_DONE) {
+                    submitNewGoalFromInput();
+                    return true;
+                }
+                return false;
+            });
+        }
         
         // Save button click listener
         saveButton.setOnClickListener(v -> {
@@ -429,78 +484,178 @@ public class StoryDetailActivity extends AppCompatActivity {
     private void toggleGoalsVisibility() {
         dismissInlineImageResizePopup();
         if (goalsModal.getVisibility() == View.VISIBLE) {
-            goalsModal.animate()
-                    .alpha(0f)
-                    .setDuration(300)
-                    .withEndAction(() -> goalsModal.setVisibility(View.GONE))
-                    .start();
+            hideGoalsModal();
         } else {
-            goalsModal.setAlpha(0f);
-            goalsModal.setVisibility(View.VISIBLE);
-            goalsModal.animate()
-                    .alpha(1f)
-                    .setDuration(300)
-                    .start();
+            showGoalsModal();
         }
     }
-    
+
+    private void showGoalsModal() {
+        if (customFab != null) customFab.collapseImmediately();
+        updateGoalsUi();
+        goalsModal.setAlpha(0f);
+        goalsModal.setVisibility(View.VISIBLE);
+        goalsModal.animate()
+                .alpha(1f)
+                .setDuration(250)
+                .start();
+    }
+
+    private void hideGoalsModal() {
+        if (goalsModal == null) return;
+        if (goalsModal.getVisibility() != View.VISIBLE) return;
+
+        goalsModal.animate()
+                    .alpha(0f)
+                    .setDuration(200)
+                    .withEndAction(() -> {
+                        goalsModal.setVisibility(View.GONE);
+                        if (addGoalEditText != null) addGoalEditText.clearFocus();
+                    })
+                    .start();
+    }
+
+    private void submitNewGoalFromInput() {
+        if (addGoalEditText == null) return;
+        String text = addGoalEditText.getText().toString().trim();
+        if (text.isEmpty()) return;
+        addGoal(text, false);
+        addGoalEditText.setText("");
+        updateGoalsUi();
+    }
+
+    private void updateGoalsUi() {
+        updateGoalsEmptyState();
+        updateGoalsHeader();
+        updateTopGoalTracker();
+    }
+
+    private void updateGoalsEmptyState() {
+        if (goalsEmptyText == null || goalsContainer == null) return;
+        boolean empty = goalsContainer.getChildCount() == 0;
+        goalsEmptyText.setVisibility(empty ? View.VISIBLE : View.GONE);
+    }
+
+    private void updateGoalsHeader() {
+        int total = goalItems.size();
+        int completed = 0;
+        for (GoalItem item : goalItems) {
+            if (item.completed) completed++;
+        }
+
+        if (goalsCountText != null) {
+            goalsCountText.setText(completed + " of " + total + " completed");
+        }
+
+        if (goalsProgressFill != null) {
+            float ratio = total <= 0 ? 0f : (completed / (float) total);
+            View parent = (View) goalsProgressFill.getParent();
+            if (parent instanceof androidx.constraintlayout.widget.ConstraintLayout) {
+                androidx.constraintlayout.widget.ConstraintLayout.LayoutParams lp =
+                        (androidx.constraintlayout.widget.ConstraintLayout.LayoutParams) goalsProgressFill.getLayoutParams();
+                lp.matchConstraintPercentWidth = Math.max(0f, Math.min(1f, ratio));
+                goalsProgressFill.setLayoutParams(lp);
+            }
+        }
+    }
+
+    private void updateTopGoalTracker() {
+        if (goalTrackerPill == null || goalTrackerText == null || goalTrackerRing == null || goalTrackerCheck == null) {
+            return;
+        }
+
+        int total = goalItems.size();
+        int completed = 0;
+        for (GoalItem item : goalItems) {
+            if (item.completed) completed++;
+        }
+
+        if (total <= 0) {
+            goalTrackerPill.setVisibility(View.GONE);
+            return;
+        }
+
+        goalTrackerPill.setVisibility(View.VISIBLE);
+        goalTrackerText.setText(completed + "/" + total);
+
+        boolean allDone = completed == total;
+        goalTrackerCheck.setVisibility(allDone ? View.VISIBLE : View.GONE);
+        goalTrackerRing.setBackgroundResource(allDone ? R.drawable.bg_goal_tracker_ring_done : R.drawable.bg_goal_tracker_ring);
+        int textColor = androidx.core.content.ContextCompat.getColor(this,
+                allDone ? R.color.menu_text_primary : R.color.menu_text_secondary);
+        goalTrackerText.setTextColor(textColor);
+    }
+
     private void addGoal(String goalText) {
-        LinearLayout goalLayout = new LinearLayout(this);
-        goalLayout.setLayoutParams(new LinearLayout.LayoutParams(
+        addGoal(goalText, false);
+    }
+
+    private void addGoal(String goalText, boolean completed) {
+        if (goalsContainer == null) return;
+
+        View row = LayoutInflater.from(this).inflate(R.layout.item_goal_row, goalsContainer, false);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT));
-        goalLayout.setOrientation(LinearLayout.HORIZONTAL);
-        goalLayout.setPadding(0, 8, 0, 8);
-        
-        // Create checkbox
-        CheckBox goalCheckBox = new CheckBox(this);
-        goalCheckBox.setLayoutParams(new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT));
-        goalCheckBox.setButtonTintList(android.content.res.ColorStateList.valueOf(0xFF4CAF50));
-        
-        // Create EditText for goal text
-        EditText goalEditText = new EditText(this);
-        LinearLayout.LayoutParams editTextParams = new LinearLayout.LayoutParams(
-                0,
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-                1);
-        editTextParams.setMargins(12, 0, 12, 0);
-        goalEditText.setLayoutParams(editTextParams);
-        goalEditText.setBackgroundColor(0xFF3c3c3c);
-        goalEditText.setTextColor(0xFFffffff);
-        goalEditText.setHintTextColor(0xFF808080);
-        goalEditText.setHint("Enter goal...");
-        goalEditText.setPadding(8, 8, 8, 8);
-        goalEditText.setText(goalText);
-        
-        // Create delete button
-        Button deleteButton = new Button(this);
-        deleteButton.setLayoutParams(new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT));
-        deleteButton.setText("×");
-        deleteButton.setTextSize(20);
-        deleteButton.setBackgroundColor(0xFFf44336);
-        deleteButton.setTextColor(0xFFffffff);
-        deleteButton.setPadding(8, 0, 8, 0);
-        
-        // Add delete functionality
-        deleteButton.setOnClickListener(v -> {
-            goalsContainer.removeView(goalLayout);
-            goalItems.remove(new GoalItem(goalCheckBox, goalEditText));
-        });
-        
-        // Add views to goal layout
-        goalLayout.addView(goalCheckBox);
-        goalLayout.addView(goalEditText);
-        goalLayout.addView(deleteButton);
-        
-        // Add goal layout to container
-        goalsContainer.addView(goalLayout);
-        
-        // Store goal item
-        goalItems.add(new GoalItem(goalCheckBox, goalEditText));
+                LinearLayout.LayoutParams.WRAP_CONTENT
+        );
+        lp.topMargin = dpToPx(10);
+        row.setLayoutParams(lp);
+
+        View checkButton = row.findViewById(R.id.goalCheckButton);
+        View checkCircle = row.findViewById(R.id.goalCheckCircle);
+        ImageView checkIcon = row.findViewById(R.id.goalCheckIcon);
+        TextView goalTextView = row.findViewById(R.id.goalText);
+        ImageButton deleteButton = row.findViewById(R.id.goalDeleteButton);
+
+        goalTextView.setText(goalText);
+
+        GoalItem item = new GoalItem(row, goalTextView, checkCircle, checkIcon, deleteButton);
+        goalItems.add(item);
+        goalsContainer.addView(row);
+
+        setGoalCompleted(item, completed);
+
+        if (checkButton != null) {
+            checkButton.setOnClickListener(v -> {
+                setGoalCompleted(item, !item.completed);
+                updateGoalsUi();
+            });
+        }
+
+        if (deleteButton != null) {
+            deleteButton.setOnClickListener(v -> {
+                goalsContainer.removeView(row);
+                goalItems.remove(item);
+                updateGoalsUi();
+            });
+        }
+
+        updateGoalsUi();
+    }
+
+    private void setGoalCompleted(GoalItem item, boolean completed) {
+        if (item == null) return;
+        item.completed = completed;
+
+        if (item.checkCircle != null) {
+            item.checkCircle.setBackgroundResource(completed ? R.drawable.bg_goal_check_checked : R.drawable.bg_goal_check_unchecked);
+        }
+        if (item.checkIcon != null) {
+            item.checkIcon.setVisibility(completed ? View.VISIBLE : View.GONE);
+        }
+        if (item.textView != null) {
+            int color = androidx.core.content.ContextCompat.getColor(this,
+                    completed ? R.color.menu_text_secondary : R.color.menu_text_primary);
+            item.textView.setTextColor(color);
+            item.textView.setAlpha(completed ? 0.8f : 1f);
+
+            int flags = item.textView.getPaintFlags();
+            if (completed) {
+                item.textView.setPaintFlags(flags | Paint.STRIKE_THRU_TEXT_FLAG);
+            } else {
+                item.textView.setPaintFlags(flags & (~Paint.STRIKE_THRU_TEXT_FLAG));
+            }
+        }
     }
     
     private void openImagePicker() {
@@ -651,17 +806,20 @@ public class StoryDetailActivity extends AppCompatActivity {
         
         // Collect goals data
         StringBuilder goalsData = new StringBuilder();
+        boolean firstGoal = true;
         for (int i = 0; i < goalItems.size(); i++) {
             GoalItem item = goalItems.get(i);
-            String goalText = item.editText.getText().toString();
-            boolean isCompleted = item.checkBox.isChecked();
-            
-            if (!goalText.isEmpty()) {
-                if (i > 0) {
-                    goalsData.append("|||");
-                }
-                goalsData.append(goalText).append("|").append(isCompleted);
+            String goalText = item.textView != null ? item.textView.getText().toString() : "";
+            boolean isCompleted = item.completed;
+
+            goalText = goalText != null ? goalText.trim() : "";
+            if (goalText.isEmpty()) continue;
+
+            if (!firstGoal) {
+                goalsData.append("|||");
             }
+            goalsData.append(goalText).append("|").append(isCompleted);
+            firstGoal = false;
         }
         
         // Save to SharedPreferences
@@ -782,32 +940,45 @@ public class StoryDetailActivity extends AppCompatActivity {
                     wallpaperEncoded = wallpaperParts[1];
                 }
             }
-            
-            String[] parts = storyData.split("\\|\\|");
-            if (parts.length >= 1) {
-                titleEditText.setText(parts[0]);
+
+            // Legacy format: title||story||goals (goals separated by |||)
+            // NOTE: We must NOT use split("||") because "|||" contains "||".
+            String title = "";
+            String story = "";
+            String goalsBlob = "";
+            int firstSep = storyData.indexOf("||");
+            if (firstSep < 0) {
+                title = storyData;
+            } else {
+                title = storyData.substring(0, firstSep);
+                int secondSep = storyData.indexOf("||", firstSep + 2);
+                if (secondSep < 0) {
+                    story = storyData.substring(firstSep + 2);
+                } else {
+                    story = storyData.substring(firstSep + 2, secondSep);
+                    goalsBlob = storyData.substring(secondSep + 2);
+                }
             }
-            if (parts.length >= 2) {
-                // Parse story with inline images
-                SpannableStringBuilder spannableStory = parseStoryWithImages(parts[1]);
+
+            titleEditText.setText(title);
+
+            if (story != null && !story.isEmpty()) {
+                SpannableStringBuilder spannableStory = parseStoryWithImages(story);
                 storyEditText.setText(spannableStory);
             }
-            if (parts.length >= 3 && !parts[2].isEmpty()) {
-                String[] goals = parts[2].split("\\|\\|\\|");
+
+            if (goalsBlob != null && !goalsBlob.isEmpty()) {
+                String[] goals = goalsBlob.split("\\|\\|\\|");
                 for (String goal : goals) {
                     String[] goalParts = goal.split("\\|");
                     String goalText = goalParts.length > 0 ? goalParts[0] : "";
                     boolean isCompleted = goalParts.length > 1 && Boolean.parseBoolean(goalParts[1]);
-                    
-                    addGoal(goalText);
-                    
-                    // Set checkbox state for the last added goal
-                    if (!goalItems.isEmpty()) {
-                        GoalItem lastGoal = goalItems.get(goalItems.size() - 1);
-                        lastGoal.checkBox.setChecked(isCompleted);
-                    }
+
+                    addGoal(goalText, isCompleted);
                 }
             }
+
+            updateGoalsUi();
             
             // Load wallpaper
             if (!wallpaperEncoded.isEmpty()) {
@@ -967,12 +1138,19 @@ public class StoryDetailActivity extends AppCompatActivity {
     
     
     private static class GoalItem {
-        CheckBox checkBox;
-        EditText editText;
-        
-        GoalItem(CheckBox checkBox, EditText editText) {
-            this.checkBox = checkBox;
-            this.editText = editText;
+        final View row;
+        final TextView textView;
+        final View checkCircle;
+        final ImageView checkIcon;
+        final ImageButton deleteButton;
+        boolean completed;
+
+        GoalItem(View row, TextView textView, View checkCircle, ImageView checkIcon, ImageButton deleteButton) {
+            this.row = row;
+            this.textView = textView;
+            this.checkCircle = checkCircle;
+            this.checkIcon = checkIcon;
+            this.deleteButton = deleteButton;
         }
     }
 }
