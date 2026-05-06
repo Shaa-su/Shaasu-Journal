@@ -99,6 +99,9 @@ public class StoryDetailActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        StoryStore.migrateIfNeeded(this);
+
         setContentView(R.layout.activity_story_detail);
         
         // Configure soft keyboard to not resize layout
@@ -833,8 +836,8 @@ public class StoryDetailActivity extends AppCompatActivity {
             firstGoal = false;
         }
         
-        // Save to SharedPreferences
-        SharedPreferences sharedPref = getSharedPreferences("stories", MODE_PRIVATE);
+        // Save to encrypted SharedPreferences
+        SharedPreferences sharedPref = StoryStore.get(this);
         SharedPreferences.Editor editor = sharedPref.edit();
         
         String dateKey = selectedYear + "-" + String.format("%02d", selectedMonth + 1) + "-" + String.format("%02d", selectedDay);
@@ -941,7 +944,7 @@ public class StoryDetailActivity extends AppCompatActivity {
     }
     
     private void loadStory() {
-        SharedPreferences sharedPref = getSharedPreferences("stories", MODE_PRIVATE);
+        SharedPreferences sharedPref = StoryStore.get(this);
         String dateKey = selectedYear + "-" + String.format("%02d", selectedMonth + 1) + "-" + String.format("%02d", selectedDay);
         String storyData = sharedPref.getString(dateKey, null);
         

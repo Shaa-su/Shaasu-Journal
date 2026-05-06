@@ -1,30 +1,46 @@
 package com.example.myapplication;
 
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.text.InputType;
 import android.view.View;
+import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
+
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.app.AlertDialog;
+
 import org.json.JSONObject;
-import java.io.File;
-import java.io.FileWriter;
+
 import java.io.BufferedReader;
-import java.io.FileReader;
 import java.io.InputStreamReader;
-import android.os.Environment;
 import android.net.Uri;
+import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
+import java.security.GeneralSecurityException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
 import java.util.Map;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Arrays;
 
 public class MainActivity extends AppCompatActivity {
+
+    private static final int IMPORT_REQUEST_CODE = 2;
+    private static final int EXPORT_REQUEST_CODE = 3;
+
+    private char[] pendingExportPassword;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        // One-time migration from legacy plaintext prefs to encrypted prefs.
+        StoryStore.migrateIfNeeded(this);
+
         setContentView(R.layout.activity_main);
         
         // Logout (top-right text)
@@ -75,48 +91,49 @@ public class MainActivity extends AppCompatActivity {
     }
     
     private void handleExportData() {
-        try {
-            SharedPreferences sharedPref = getSharedPreferences("stories", MODE_PRIVATE);
-            Map<String, ?> allEntries = sharedPref.getAll();
-            
-            if (allEntries.isEmpty()) {
-                Toast.makeText(this, "No data to export", Toast.LENGTH_SHORT).show();
+        Map<String, ?> allEntries = StoryStore.get(this).getAll();
+
+        if (allEntries.isEmpty()) {
+            Toast.makeText(this, "No data to export", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        promptForPassword("Set a backup password", password -> {
+            if (password == null || password.length == 0) {
+                Toast.makeText(this, "Password required", Toast.LENGTH_SHORT).show();
                 return;
             }
-            
-            // Create JSON object with all stories
-            JSONObject jsonObject = new JSONObject();
-            jsonObject.put("export_date", new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(new Date()));
-            jsonObject.put("stories", new JSONObject(allEntries));
-            
-            // Create file in Downloads directory
-            File downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
-            if (!downloadsDir.exists()) {
-                downloadsDir.mkdirs();
-            }
-            
+
+            // Store until the user picks a destination Uri.
+            pendingExportPassword = password;
+
             String fileName = "shaasu_stories_" + new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date()) + ".json";
-            File exportFile = new File(downloadsDir, fileName);
-            
-            // Write JSON to file
-            try (FileWriter writer = new FileWriter(exportFile)) {
-                writer.write(jsonObject.toString(2)); // Pretty print with indent
+
+            // Use Storage Access Framework so export works reliably on modern Android.
+            Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+            intent.addCategory(Intent.CATEGORY_OPENABLE);
+            intent.setType("application/json");
+            intent.putExtra(Intent.EXTRA_TITLE, fileName);
+
+            try {
+                startActivityForResult(intent, EXPORT_REQUEST_CODE);
+            } catch (android.content.ActivityNotFoundException e) {
+                Arrays.fill(pendingExportPassword, '\0');
+                pendingExportPassword = null;
+                Toast.makeText(this, "No file picker found", Toast.LENGTH_SHORT).show();
             }
-            
-            Toast.makeText(this, "Data exported to: " + fileName, Toast.LENGTH_LONG).show();
-        } catch (Exception e) {
-            Toast.makeText(this, "Export failed: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-        }
+        });
     }
     
     private void handleImportData() {
         // Open file picker to select JSON file
-        Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
-        intent.setType("application/json");
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
         intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType("application/json");
+        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
         
         try {
-            startActivityForResult(intent, 2); // 2 = import request code
+            startActivityForResult(intent, IMPORT_REQUEST_CODE);
         } catch (android.content.ActivityNotFoundException e) {
             Toast.makeText(this, "No file manager found", Toast.LENGTH_SHORT).show();
         }
@@ -125,53 +142,155 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        
-        if (requestCode == 2 && resultCode == RESULT_OK && data != null) {
-            Uri fileUri = data.getData();
-            if (fileUri != null) {
-                importFromUri(fileUri);
+
+        if (requestCode == EXPORT_REQUEST_CODE && resultCode != RESULT_OK) {
+            if (pendingExportPassword != null) {
+                Arrays.fill(pendingExportPassword, '\0');
+                pendingExportPassword = null;
             }
+        }
+
+        if (resultCode != RESULT_OK || data == null) return;
+        Uri fileUri = data.getData();
+        if (fileUri == null) return;
+
+        if (requestCode == IMPORT_REQUEST_CODE) {
+            importFromUri(fileUri);
+        } else if (requestCode == EXPORT_REQUEST_CODE) {
+            if (pendingExportPassword == null || pendingExportPassword.length == 0) {
+                Toast.makeText(this, "Missing export password", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            exportToUriEncrypted(fileUri, pendingExportPassword);
+            Arrays.fill(pendingExportPassword, '\0');
+            pendingExportPassword = null;
+        }
+    }
+
+    private void exportToUriEncrypted(Uri uri, char[] password) {
+        try {
+            Map<String, ?> allEntries = StoryStore.get(this).getAll();
+
+            JSONObject storiesJson = new JSONObject();
+            for (Map.Entry<String, ?> e : allEntries.entrySet()) {
+                if (e.getValue() instanceof String) {
+                    storiesJson.put(e.getKey(), (String) e.getValue());
+                }
+            }
+
+            if (storiesJson.length() == 0) {
+                Toast.makeText(this, "No story strings to export", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            JSONObject root = new JSONObject();
+            root.put("export_date", new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(new Date()));
+            root.put("stories", storiesJson);
+
+            JSONObject envelope = ExportCrypto.encryptToEnvelope(root.toString(), password);
+
+            try (OutputStream os = getContentResolver().openOutputStream(uri)) {
+                if (os == null) throw new IllegalStateException("Unable to open export destination");
+                os.write(envelope.toString(2).getBytes(StandardCharsets.UTF_8));
+                os.flush();
+            }
+
+            Toast.makeText(this, "Encrypted export successful", Toast.LENGTH_LONG).show();
+        } catch (Exception e) {
+            Toast.makeText(this, "Export failed: " + e.getMessage(), Toast.LENGTH_SHORT).show();
         }
     }
     
     private void importFromUri(Uri uri) {
         try {
-            // Read JSON from selected file
-            StringBuilder jsonContent = new StringBuilder();
-            try (BufferedReader reader = new BufferedReader(
-                    new InputStreamReader(getContentResolver().openInputStream(uri)))) {
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    jsonContent.append(line);
-                }
+            JSONObject jsonObject = readJsonObjectFromUri(uri);
+
+            if (ExportCrypto.looksEncrypted(jsonObject)) {
+                promptForPassword("Enter backup password", password -> {
+                    if (password == null || password.length == 0) {
+                        Toast.makeText(this, "Password required", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    try {
+                        String plaintext = ExportCrypto.decryptEnvelope(jsonObject, password);
+                        JSONObject plainRoot = new JSONObject(plaintext);
+                        int count = importFromPlainRoot(plainRoot);
+                        Toast.makeText(this, "Successfully imported " + count + " stories!", Toast.LENGTH_LONG).show();
+                    } catch (GeneralSecurityException sec) {
+                        Toast.makeText(this, "Wrong password or corrupted file", Toast.LENGTH_SHORT).show();
+                    } catch (Exception e) {
+                        Toast.makeText(this, "Import failed: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                    } finally {
+                        Arrays.fill(password, '\0');
+                    }
+                });
+                return;
             }
-            
-            JSONObject jsonObject = new JSONObject(jsonContent.toString());
-            JSONObject storiesObject = jsonObject.getJSONObject("stories");
-            
-            // Restore data to SharedPreferences
-            SharedPreferences sharedPref = getSharedPreferences("stories", MODE_PRIVATE);
-            SharedPreferences.Editor editor = sharedPref.edit();
-            
-            // Clear existing data first
-            editor.clear();
-            
-            // Add all stories from import
-            @SuppressWarnings("unchecked")
-            java.util.Iterator<String> keys = storiesObject.keys();
-            int importedCount = 0;
-            while (keys.hasNext()) {
-                String key = keys.next();
-                String value = storiesObject.getString(key);
-                editor.putString(key, value);
-                importedCount++;
-            }
-            
-            editor.apply();
-            
-            Toast.makeText(this, "Successfully imported " + importedCount + " stories!", Toast.LENGTH_LONG).show();
+
+            int count = importFromPlainRoot(jsonObject);
+            Toast.makeText(this, "Successfully imported " + count + " stories!", Toast.LENGTH_LONG).show();
         } catch (Exception e) {
             Toast.makeText(this, "Import failed: " + e.getMessage(), Toast.LENGTH_SHORT).show();
         }
+    }
+
+    private JSONObject readJsonObjectFromUri(Uri uri) throws Exception {
+        StringBuilder jsonContent = new StringBuilder();
+        try (BufferedReader reader = new BufferedReader(
+                new InputStreamReader(getContentResolver().openInputStream(uri), StandardCharsets.UTF_8))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                jsonContent.append(line);
+            }
+        }
+        return new JSONObject(jsonContent.toString());
+    }
+
+    private int importFromPlainRoot(JSONObject root) throws Exception {
+        JSONObject storiesObject = root.getJSONObject("stories");
+
+        // Validate first into a temp map (so a bad file can't wipe existing data)
+        HashMap<String, String> toImport = new HashMap<>();
+        Iterator<String> keys = storiesObject.keys();
+        int importedCount = 0;
+        while (keys.hasNext()) {
+            String key = keys.next();
+            Object val = storiesObject.get(key);
+            if (!(val instanceof String)) {
+                throw new IllegalArgumentException("Invalid story value for key: " + key);
+            }
+            toImport.put(key, (String) val);
+            importedCount++;
+        }
+
+        // Replace existing only after validation
+        android.content.SharedPreferences sharedPref = StoryStore.get(this);
+        android.content.SharedPreferences.Editor editor = sharedPref.edit();
+        editor.clear();
+        for (Map.Entry<String, String> e : toImport.entrySet()) {
+            editor.putString(e.getKey(), e.getValue());
+        }
+        editor.apply();
+        return importedCount;
+    }
+
+    private interface PasswordCallback {
+        void onPassword(char[] password);
+    }
+
+    private void promptForPassword(String title, PasswordCallback callback) {
+        EditText input = new EditText(this);
+        input.setHint("Password");
+        input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
+
+        new AlertDialog.Builder(this)
+                .setTitle(title)
+                .setView(input)
+                .setPositiveButton("OK", (d, which) -> {
+                    String pw = input.getText() != null ? input.getText().toString() : "";
+                    callback.onPassword(pw.toCharArray());
+                })
+                .setNegativeButton("Cancel", (d, which) -> callback.onPassword(null))
+                .show();
     }
 }

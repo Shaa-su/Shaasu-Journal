@@ -35,6 +35,9 @@ public class StoriesListActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        StoryStore.migrateIfNeeded(this);
+
         setContentView(R.layout.activity_stories_list);
         
         storiesListView = findViewById(R.id.storiesListView);
@@ -109,7 +112,7 @@ public class StoriesListActivity extends AppCompatActivity {
     }
     
     private void loadAllStories() {
-        SharedPreferences sharedPref = getSharedPreferences("stories", MODE_PRIVATE);
+        SharedPreferences sharedPref = StoryStore.get(this);
         Map<String, ?> allStories = sharedPref.getAll();
         
         storiesList.clear();

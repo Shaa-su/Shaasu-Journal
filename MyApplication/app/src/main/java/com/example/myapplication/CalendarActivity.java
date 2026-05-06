@@ -57,6 +57,9 @@ public class CalendarActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        StoryStore.migrateIfNeeded(this);
+
         setContentView(R.layout.activity_calendar);
 
         recyclerDays = findViewById(R.id.recyclerDays);
@@ -150,7 +153,7 @@ public class CalendarActivity extends AppCompatActivity {
             moodStatsMonthText.setText(months[month0] + " " + year);
         }
 
-        SharedPreferences sharedPref = getSharedPreferences("stories", MODE_PRIVATE);
+        SharedPreferences sharedPref = StoryStore.get(this);
 
         Calendar cal = Calendar.getInstance();
         cal.set(Calendar.YEAR, year);
@@ -332,7 +335,7 @@ public class CalendarActivity extends AppCompatActivity {
 
         int daysInMonth = firstOfMonth.getActualMaximum(Calendar.DAY_OF_MONTH);
 
-        SharedPreferences sharedPref = getSharedPreferences("stories", MODE_PRIVATE);
+        SharedPreferences sharedPref = StoryStore.get(this);
         Calendar today = Calendar.getInstance();
         int todayY = today.get(Calendar.YEAR);
         int todayM = today.get(Calendar.MONTH);
