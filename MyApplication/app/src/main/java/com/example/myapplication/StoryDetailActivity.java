@@ -496,15 +496,50 @@ public class StoryDetailActivity extends AppCompatActivity {
 
         // Try exact offset first
         ResizableImageSpan[] spans = text.getSpans(offset, offset, ResizableImageSpan.class);
-        if (spans != null && spans.length > 0) return spans[0];
+        if (spans != null && spans.length > 0) {
+            for (ResizableImageSpan span : spans) {
+                int spanStart = text.getSpanStart(span);
+                if (isTouchInsideImageSpan(span, spanStart, xView, yView)) return span;
+            }
+        }
 
         // Sometimes offset lands adjacent; check nearby
         int start = Math.max(0, offset - 1);
         int end = Math.min(text.length(), offset + 1);
         spans = text.getSpans(start, end, ResizableImageSpan.class);
-        if (spans != null && spans.length > 0) return spans[0];
+        if (spans != null && spans.length > 0) {
+            for (ResizableImageSpan span : spans) {
+                int spanStart = text.getSpanStart(span);
+                if (isTouchInsideImageSpan(span, spanStart, xView, yView)) return span;
+            }
+        }
 
         return null;
+    }
+
+    private boolean isTouchInsideImageSpan(ResizableImageSpan span, int spanStart, float xView, float yView) {
+        if (span == null || storyEditText == null) return false;
+        android.text.Layout layout = storyEditText.getLayout();
+        if (layout == null) return false;
+        if (spanStart < 0) return false;
+
+        int line = layout.getLineForOffset(spanStart);
+        int width = span.getWidthPx();
+        int height = span.getHeightPx();
+        if (width <= 0 || height <= 0) return false;
+
+        float left = layout.getPrimaryHorizontal(spanStart)
+                + storyEditText.getTotalPaddingLeft()
+                - storyEditText.getScrollX();
+        float right = left + width;
+
+        float lineBottom = layout.getLineBottom(line)
+                + storyEditText.getTotalPaddingTop()
+                - storyEditText.getScrollY();
+        float top = lineBottom - height;
+        float bottom = lineBottom;
+
+        return xView >= left && xView <= right && yView >= top && yView <= bottom;
     }
     
     
