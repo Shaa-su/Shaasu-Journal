@@ -5,8 +5,11 @@ import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Paint;
+import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.provider.MediaStore;
 import android.text.Spanned;
 import android.text.SpannableStringBuilder;
@@ -27,6 +30,8 @@ import android.view.WindowManager;
 import android.widget.ImageButton;
 import android.view.inputmethod.EditorInfo;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.content.res.AppCompatResources;
+import androidx.core.content.ContextCompat;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.core.graphics.Insets;
@@ -95,9 +100,13 @@ public class StoryDetailActivity extends AppCompatActivity {
     private static final int MIN_INLINE_IMAGE_WIDTH_PX = 80;
     private static final int DEFAULT_INLINE_IMAGE_WIDTH_PX = 300;
     private static final int RESIZE_SEEKBAR_MAX = 5000;
+    private static final int SAVE_BUTTON_RESET_DELAY_MS = 900;
 
     private static final String MOOD_MARKER = "[MOOD_MARKER]";
     private static final String WALLPAPER_MARKER = "[WALLPAPER_MARKER]";
+
+    private final Handler uiHandler = new Handler(Looper.getMainLooper());
+    private Runnable saveResetRunnable;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -238,6 +247,48 @@ public class StoryDetailActivity extends AppCompatActivity {
                 openWallpaperPicker();
             }
         });
+    }
+
+    private void showSaveSuccessAndReset(boolean autoFinish) {
+        if (saveButton == null) return;
+
+        saveButton.setEnabled(false);
+        saveButton.setText("Saved!");
+        saveButton.setBackgroundResource(R.drawable.bg_story_save_pill_saved);
+        Drawable check = AppCompatResources.getDrawable(this, R.drawable.ic_check_simple);
+        saveButton.setCompoundDrawablesWithIntrinsicBounds(check, null, null, null);
+        saveButton.setTextColor(ContextCompat.getColor(this, R.color.white));
+
+        if (saveResetRunnable != null) {
+            uiHandler.removeCallbacks(saveResetRunnable);
+        }
+
+        saveResetRunnable = () -> {
+            restoreSaveButtonDefaults();
+            saveButton.setEnabled(true);
+            if (autoFinish && !isFinishing()) {
+                finish();
+            }
+        };
+        uiHandler.postDelayed(saveResetRunnable, SAVE_BUTTON_RESET_DELAY_MS);
+    }
+
+    private void restoreSaveButtonDefaults() {
+        if (saveButton == null) return;
+        saveButton.setText("Save");
+        saveButton.setBackgroundResource(R.drawable.bg_story_save_pill);
+        Drawable saveIcon = AppCompatResources.getDrawable(this, R.drawable.ic_save_simple);
+        saveButton.setCompoundDrawablesWithIntrinsicBounds(saveIcon, null, null, null);
+        saveButton.setTextColor(ContextCompat.getColor(this, R.color.menu_text_primary));
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (saveResetRunnable != null) {
+            uiHandler.removeCallbacks(saveResetRunnable);
+            saveResetRunnable = null;
+        }
     }
 
     private void setupInlineImageResizeGesture() {
@@ -908,9 +959,8 @@ public class StoryDetailActivity extends AppCompatActivity {
         
         editor.putString(dateKey, storyData);
         editor.apply();
-        
-        Toast.makeText(this, "Story saved!", Toast.LENGTH_SHORT).show();
-        finish();
+
+        showSaveSuccessAndReset(true);
     }
     
     private String extractStoryWithImagePlaceholders(Spanned spanned) {
