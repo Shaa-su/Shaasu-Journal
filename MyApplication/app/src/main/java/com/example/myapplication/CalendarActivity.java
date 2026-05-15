@@ -114,7 +114,12 @@ public class CalendarActivity extends AppCompatActivity {
             openStoryEditor(selectedYear, selectedMonth0, selectedDay);
         });
 
-        updateCalendar();
+        // Defer heavy loading to the next frame to reduce navigation lag.
+        if (recyclerDays != null) {
+            recyclerDays.post(this::updateCalendar);
+        } else {
+            updateCalendar();
+        }
     }
 
     private void updateCalendar() {

@@ -5,6 +5,8 @@ import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.util.Base64;
@@ -30,6 +32,8 @@ import java.util.Map;
 import java.util.Locale;
 import java.util.regex.Pattern;
 import java.util.regex.Matcher;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class StoriesListActivity extends AppCompatActivity {
 
@@ -50,6 +54,10 @@ public class StoriesListActivity extends AppCompatActivity {
     private final List<StoryPreview> allPreviews = new ArrayList<>();
     private final List<StoryPreview> filteredPreviews = new ArrayList<>();
     private final List<String> storyDateKeys = new ArrayList<>();
+
+    private final ExecutorService backgroundExecutor = Executors.newSingleThreadExecutor();
+    private final ExecutorService imageExecutor = Executors.newFixedThreadPool(2);
+    private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
     private enum TimeFilter { ALL, WEEK, MONTH, YEAR }
     private TimeFilter selectedTimeFilter = TimeFilter.ALL;
@@ -86,9 +94,13 @@ public class StoriesListActivity extends AppCompatActivity {
         
         adapter = new StoriesAdapter();
         storiesListView.setAdapter(adapter);
-        
-        // Load all stories from SharedPreferences
-        loadAllStories();
+
+        // Load stories after first frame to avoid navigation jank.
+        if (storiesListView != null) {
+            storiesListView.post(this::loadAllStories);
+        } else {
+            loadAllStories();
+        }
 
         if (searchEditText != null) {
             searchEditText.addTextChangedListener(new TextWatcher() {
@@ -162,117 +174,129 @@ public class StoriesListActivity extends AppCompatActivity {
     }
     
     private void loadAllStories() {
-        SharedPreferences sharedPref = StoryStore.get(this);
-        Map<String, ?> allStories = sharedPref.getAll();
+        backgroundExecutor.execute(() -> {
+            SharedPreferences sharedPref = StoryStore.get(this);
+            Map<String, ?> allStories = sharedPref.getAll();
 
-        allPreviews.clear();
-        filteredPreviews.clear();
-        storyDateKeys.clear();
+            List<StoryPreview> previews = new ArrayList<>();
+            List<String> dateKeys = new ArrayList<>();
+            boolean isEmpty = allStories.isEmpty();
 
-        if (allStories.isEmpty()) {
-            if (storiesListView != null) storiesListView.setVisibility(android.view.View.GONE);
-            if (emptyStateContainer != null) emptyStateContainer.setVisibility(android.view.View.VISIBLE);
-        } else {
-            if (emptyStateContainer != null) emptyStateContainer.setVisibility(android.view.View.GONE);
-            if (storiesListView != null) storiesListView.setVisibility(android.view.View.VISIBLE);
+            if (!isEmpty) {
+                // Sort dates in reverse order (newest first)
+                List<String> dates = new ArrayList<>(allStories.keySet());
+                Collections.sort(dates, Collections.reverseOrder());
 
-            // Sort dates in reverse order (newest first)
-            List<String> dates = new ArrayList<>(allStories.keySet());
-            Collections.sort(dates, Collections.reverseOrder());
-            
-            for (String dateKey : dates) {
-                if (dateKey == null || !DATE_KEY_PATTERN.matcher(dateKey).matches()) {
-                    // Skip EncryptedSharedPreferences internal keys and any other non-date keys.
-                    continue;
-                }
+                for (String dateKey : dates) {
+                    if (dateKey == null || !DATE_KEY_PATTERN.matcher(dateKey).matches()) {
+                        // Skip EncryptedSharedPreferences internal keys and any other non-date keys.
+                        continue;
+                    }
 
-                Object raw = allStories.get(dateKey);
-                if (!(raw instanceof String)) {
-                    // Defensive: skip non-string preference values.
-                    continue;
-                }
+                    Object raw = allStories.get(dateKey);
+                    if (!(raw instanceof String)) {
+                        // Defensive: skip non-string preference values.
+                        continue;
+                    }
 
-                String storyData = (String) raw;
-                if (storyData != null) {
-                    String moodText = null;
-                    String moodId = extractMoodId(storyData);
-                    if (moodId != null && !moodId.trim().isEmpty()) {
-                        Mood mood = Mood.findById(moodId.trim());
-                        if (mood != null) {
-                            String emoji = mood.emoji != null ? mood.emoji.trim() : "";
-                            String label = mood.label != null ? mood.label.trim() : "";
-                            if (!emoji.isEmpty() && !label.isEmpty()) {
-                                moodText = emoji + " " + label;
-                            } else if (!emoji.isEmpty()) {
-                                moodText = emoji;
-                            } else if (!label.isEmpty()) {
-                                moodText = label;
+                    String storyData = (String) raw;
+                    if (storyData != null) {
+                        String moodText = null;
+                        String moodId = extractMoodId(storyData);
+                        if (moodId != null && !moodId.trim().isEmpty()) {
+                            Mood mood = Mood.findById(moodId.trim());
+                            if (mood != null) {
+                                String emoji = mood.emoji != null ? mood.emoji.trim() : "";
+                                String label = mood.label != null ? mood.label.trim() : "";
+                                if (!emoji.isEmpty() && !label.isEmpty()) {
+                                    moodText = emoji + " " + label;
+                                } else if (!emoji.isEmpty()) {
+                                    moodText = emoji;
+                                } else if (!label.isEmpty()) {
+                                    moodText = label;
+                                }
+                            } else {
+                                moodText = moodId.trim();
                             }
-                        } else {
-                            moodText = moodId.trim();
                         }
-                    }
 
-                    // Extract wallpaper and mood markers BEFORE parsing legacy title/story/goals.
-                    boolean hasWallpaper = false;
-                    String storyDataForPreview = storyData;
-                    int wpIndex = storyDataForPreview.indexOf(WALLPAPER_MARKER);
-                    if (wpIndex >= 0) {
-                        hasWallpaper = true;
-                        storyDataForPreview = storyDataForPreview.substring(0, wpIndex);
-                    }
-
-                    int moodIndex = storyDataForPreview.indexOf(MOOD_MARKER);
-                    if (moodIndex >= 0) {
-                        storyDataForPreview = storyDataForPreview.substring(0, moodIndex);
-                    }
-
-                    // Legacy format: title||story||goals (goals separated by |||)
-                    // IMPORTANT: do not split("||") because "|||" contains "||".
-                    String title = "";
-                    String story = "";
-                    String goals = "";
-                    int firstSep = storyDataForPreview.indexOf("||");
-                    if (firstSep < 0) {
-                        title = storyDataForPreview;
-                    } else {
-                        title = storyDataForPreview.substring(0, firstSep);
-                        int secondSep = storyDataForPreview.indexOf("||", firstSep + 2);
-                        if (secondSep < 0) {
-                            story = storyDataForPreview.substring(firstSep + 2);
-                        } else {
-                            story = storyDataForPreview.substring(firstSep + 2, secondSep);
-                            goals = storyDataForPreview.substring(secondSep + 2);
+                        // Extract wallpaper and mood markers BEFORE parsing legacy title/story/goals.
+                        boolean hasWallpaper = false;
+                        String storyDataForPreview = storyData;
+                        int wpIndex = storyDataForPreview.indexOf(WALLPAPER_MARKER);
+                        if (wpIndex >= 0) {
+                            hasWallpaper = true;
+                            storyDataForPreview = storyDataForPreview.substring(0, wpIndex);
                         }
+
+                        int moodIndex = storyDataForPreview.indexOf(MOOD_MARKER);
+                        if (moodIndex >= 0) {
+                            storyDataForPreview = storyDataForPreview.substring(0, moodIndex);
+                        }
+
+                        // Legacy format: title||story||goals (goals separated by |||)
+                        // IMPORTANT: do not split("||") because "|||" contains "||".
+                        String title = "";
+                        String story = "";
+                        String goals = "";
+                        int firstSep = storyDataForPreview.indexOf("||");
+                        if (firstSep < 0) {
+                            title = storyDataForPreview;
+                        } else {
+                            title = storyDataForPreview.substring(0, firstSep);
+                            int secondSep = storyDataForPreview.indexOf("||", firstSep + 2);
+                            if (secondSep < 0) {
+                                story = storyDataForPreview.substring(firstSep + 2);
+                            } else {
+                                story = storyDataForPreview.substring(firstSep + 2, secondSep);
+                                goals = storyDataForPreview.substring(secondSep + 2);
+                            }
+                        }
+
+                        // Remove inline image placeholders from preview text
+                        boolean hasInlinePhoto = story != null && story.contains("[IMG:");
+
+                        String storyTextNoImages = INLINE_IMAGE_PLACEHOLDER_ANY_PATTERN.matcher(story).replaceAll("");
+                        storyTextNoImages = storyTextNoImages != null ? storyTextNoImages.trim() : "";
+                        // Collapse newlines/tabs/multiple spaces so previews don't become very tall.
+                        storyTextNoImages = storyTextNoImages.replaceAll("\\s+", " ").trim();
+
+                        String titleTrim = title != null ? title.trim() : "";
+                        String snippet;
+                        if (storyTextNoImages.isEmpty()) {
+                            snippet = "No content written yet.";
+                        } else {
+                            snippet = storyTextNoImages.length() > 120 ? storyTextNoImages.substring(0, 120) + "..." : storyTextNoImages;
+                        }
+
+                        StoryPreview preview = StoryPreview.from(dateKey, titleTrim, snippet);
+                        preview.hasWallpaper = hasWallpaper;
+                        preview.hasInlinePhoto = hasInlinePhoto;
+                        preview.moodText = moodText;
+                        previews.add(preview);
+                        dateKeys.add(dateKey);
                     }
-
-                    // Remove inline image placeholders from preview text
-                    boolean hasInlinePhoto = story != null && story.contains("[IMG:");
-
-                    String storyTextNoImages = INLINE_IMAGE_PLACEHOLDER_ANY_PATTERN.matcher(story).replaceAll("");
-                    storyTextNoImages = storyTextNoImages != null ? storyTextNoImages.trim() : "";
-                    // Collapse newlines/tabs/multiple spaces so previews don't become very tall.
-                    storyTextNoImages = storyTextNoImages.replaceAll("\\s+", " ").trim();
-
-                    String titleTrim = title != null ? title.trim() : "";
-                    String snippet;
-                    if (storyTextNoImages.isEmpty()) {
-                        snippet = "No content written yet.";
-                    } else {
-                        snippet = storyTextNoImages.length() > 120 ? storyTextNoImages.substring(0, 120) + "..." : storyTextNoImages;
-                    }
-
-                    StoryPreview preview = StoryPreview.from(dateKey, titleTrim, snippet);
-                    preview.hasWallpaper = hasWallpaper;
-                    preview.hasInlinePhoto = hasInlinePhoto;
-                    preview.moodText = moodText;
-                    allPreviews.add(preview);
-                    storyDateKeys.add(dateKey);
                 }
             }
-        }
 
-        applyFiltersAndSort();
+            mainHandler.post(() -> {
+                allPreviews.clear();
+                filteredPreviews.clear();
+                storyDateKeys.clear();
+                allPreviews.addAll(previews);
+                storyDateKeys.addAll(dateKeys);
+
+                if (isEmpty) {
+                    if (storiesListView != null) storiesListView.setVisibility(android.view.View.GONE);
+                    if (emptyStateContainer != null) emptyStateContainer.setVisibility(android.view.View.VISIBLE);
+                } else {
+                    if (emptyStateContainer != null) emptyStateContainer.setVisibility(android.view.View.GONE);
+                    if (storiesListView != null) storiesListView.setVisibility(android.view.View.VISIBLE);
+                }
+
+                applyFiltersAndSort();
+            });
+        });
     }
 
     private void setTimeFilter(TimeFilter filter) {
@@ -544,6 +568,82 @@ public class StoriesListActivity extends AppCompatActivity {
             }
         };
 
+        private void loadWallpaperAsync(String dateKey, String cacheKey, ImageView target) {
+            target.setTag(cacheKey);
+            imageExecutor.execute(() -> {
+                Bitmap b = bitmapCache.get(cacheKey);
+                if (b == null) {
+                    String storyData = StoryStore.get(StoriesListActivity.this).getString(dateKey, null);
+                    String b64 = extractWallpaperBase64(storyData);
+                    if (b64 != null && !b64.isEmpty()) {
+                        b = decodeBase64ToScaledBitmap(b64, 1080, 300);
+                        if (b != null) bitmapCache.put(cacheKey, b);
+                    }
+                }
+                final Bitmap result = b;
+                mainHandler.post(() -> {
+                    Object tag = target.getTag();
+                    if (tag == null || !cacheKey.equals(tag)) return;
+                    if (result != null) {
+                        target.setVisibility(View.VISIBLE);
+                        target.setImageBitmap(result);
+                    } else {
+                        target.setImageDrawable(null);
+                        target.setVisibility(View.GONE);
+                    }
+                });
+            });
+        }
+
+        private void loadInlineImageAsync(String dateKey, String cacheKey, ImageView target) {
+            target.setTag(cacheKey);
+            imageExecutor.execute(() -> {
+                Bitmap b = bitmapCache.get(cacheKey);
+                if (b == null) {
+                    String storyData = StoryStore.get(StoriesListActivity.this).getString(dateKey, null);
+                    // Strip markers to get story part
+                    if (storyData != null) {
+                        int wpIndex = storyData.indexOf(WALLPAPER_MARKER);
+                        if (wpIndex >= 0) storyData = storyData.substring(0, wpIndex);
+                        int moodIndex = storyData.indexOf(MOOD_MARKER);
+                        if (moodIndex >= 0) storyData = storyData.substring(0, moodIndex);
+                    }
+
+                    String story = "";
+                    if (storyData != null) {
+                        int firstSep = storyData.indexOf("||");
+                        if (firstSep >= 0) {
+                            int secondSep = storyData.indexOf("||", firstSep + 2);
+                            if (secondSep >= 0) {
+                                story = storyData.substring(firstSep + 2, secondSep);
+                            } else {
+                                story = storyData.substring(firstSep + 2);
+                            }
+                        }
+                    }
+
+                    String b64 = extractFirstInlineImageBase64(story);
+                    if (b64 != null && !b64.isEmpty()) {
+                        b = decodeBase64ToScaledBitmap(b64, 1080, 600);
+                        if (b != null) bitmapCache.put(cacheKey, b);
+                    }
+                }
+
+                final Bitmap result = b;
+                mainHandler.post(() -> {
+                    Object tag = target.getTag();
+                    if (tag == null || !cacheKey.equals(tag)) return;
+                    if (result != null) {
+                        target.setVisibility(View.VISIBLE);
+                        target.setImageBitmap(result);
+                    } else {
+                        target.setImageDrawable(null);
+                        target.setVisibility(View.GONE);
+                    }
+                });
+            });
+        }
+
         @Override
         public int getCount() {
             return filteredPreviews.size();
@@ -599,12 +699,11 @@ public class StoriesListActivity extends AppCompatActivity {
                     String cacheKey = p.dateKey + "#wp";
                     Bitmap b = bitmapCache.get(cacheKey);
                     if (b == null) {
-                        String storyData = StoryStore.get(StoriesListActivity.this).getString(p.dateKey, null);
-                        String b64 = extractWallpaperBase64(storyData);
-                        if (b64 != null && !b64.isEmpty()) {
-                            b = decodeBase64ToScaledBitmap(b64, 1080, 300);
-                            if (b != null) bitmapCache.put(cacheKey, b);
-                        }
+                        holder.headerImage.setImageDrawable(null);
+                        holder.headerImage.setVisibility(View.GONE);
+                        loadWallpaperAsync(p.dateKey, cacheKey, holder.headerImage);
+                    } else {
+                        holder.headerImage.setTag(cacheKey);
                     }
                     if (b != null) {
                         holder.headerImage.setVisibility(View.VISIBLE);
@@ -625,33 +724,11 @@ public class StoriesListActivity extends AppCompatActivity {
                     String cacheKey = p.dateKey + "#in1";
                     Bitmap b = bitmapCache.get(cacheKey);
                     if (b == null) {
-                        String storyData = StoryStore.get(StoriesListActivity.this).getString(p.dateKey, null);
-                        // Strip markers to get story part
-                        if (storyData != null) {
-                            int wpIndex = storyData.indexOf(WALLPAPER_MARKER);
-                            if (wpIndex >= 0) storyData = storyData.substring(0, wpIndex);
-                            int moodIndex = storyData.indexOf(MOOD_MARKER);
-                            if (moodIndex >= 0) storyData = storyData.substring(0, moodIndex);
-                        }
-
-                        String story = "";
-                        if (storyData != null) {
-                            int firstSep = storyData.indexOf("||");
-                            if (firstSep >= 0) {
-                                int secondSep = storyData.indexOf("||", firstSep + 2);
-                                if (secondSep >= 0) {
-                                    story = storyData.substring(firstSep + 2, secondSep);
-                                } else {
-                                    story = storyData.substring(firstSep + 2);
-                                }
-                            }
-                        }
-
-                        String b64 = extractFirstInlineImageBase64(story);
-                        if (b64 != null && !b64.isEmpty()) {
-                            b = decodeBase64ToScaledBitmap(b64, 1080, 600);
-                            if (b != null) bitmapCache.put(cacheKey, b);
-                        }
+                        holder.inlineImage.setImageDrawable(null);
+                        holder.inlineImage.setVisibility(View.GONE);
+                        loadInlineImageAsync(p.dateKey, cacheKey, holder.inlineImage);
+                    } else {
+                        holder.inlineImage.setTag(cacheKey);
                     }
                     if (b != null) {
                         holder.inlineImage.setVisibility(View.VISIBLE);
@@ -697,5 +774,12 @@ public class StoriesListActivity extends AppCompatActivity {
         super.onResume();
         // Reload stories when returning to this activity
         loadAllStories();
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        backgroundExecutor.shutdownNow();
+        imageExecutor.shutdownNow();
     }
 }
