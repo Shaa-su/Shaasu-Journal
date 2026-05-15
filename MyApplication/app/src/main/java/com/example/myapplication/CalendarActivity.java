@@ -12,6 +12,9 @@ import android.widget.TextView;
 import android.widget.FrameLayout;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
+import androidx.core.graphics.Insets;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.GridLayoutManager;
@@ -61,6 +64,16 @@ public class CalendarActivity extends AppCompatActivity {
         StoryStore.migrateIfNeeded(this);
 
         setContentView(R.layout.activity_calendar);
+
+        View root = findViewById(android.R.id.content);
+        if (root != null) {
+            ViewCompat.setOnApplyWindowInsetsListener(root, (v, insets) -> {
+                Insets sys = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+                v.setPadding(sys.left, sys.top, sys.right, sys.bottom);
+                return insets;
+            });
+            ViewCompat.requestApplyInsets(root);
+        }
 
         recyclerDays = findViewById(R.id.recyclerDays);
         monthText = findViewById(R.id.monthText);

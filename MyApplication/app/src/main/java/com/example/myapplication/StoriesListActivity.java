@@ -24,6 +24,9 @@ import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.TextView;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
+import androidx.core.graphics.Insets;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
@@ -77,6 +80,16 @@ public class StoriesListActivity extends AppCompatActivity {
         StoryStore.migrateIfNeeded(this);
 
         setContentView(R.layout.activity_stories_list);
+
+        View root = findViewById(android.R.id.content);
+        if (root != null) {
+            ViewCompat.setOnApplyWindowInsetsListener(root, (v, insets) -> {
+                Insets sys = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+                v.setPadding(sys.left, sys.top, sys.right, sys.bottom);
+                return insets;
+            });
+            ViewCompat.requestApplyInsets(root);
+        }
         
         storiesListView = findViewById(R.id.storiesListView);
         backButton = findViewById(R.id.backButton);

@@ -27,6 +27,9 @@ import android.view.WindowManager;
 import android.widget.ImageButton;
 import android.view.inputmethod.EditorInfo;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
+import androidx.core.graphics.Insets;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -103,6 +106,16 @@ public class StoryDetailActivity extends AppCompatActivity {
         StoryStore.migrateIfNeeded(this);
 
         setContentView(R.layout.activity_story_detail);
+
+        View root = findViewById(android.R.id.content);
+        if (root != null) {
+            ViewCompat.setOnApplyWindowInsetsListener(root, (v, insets) -> {
+                Insets sys = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+                v.setPadding(sys.left, sys.top, sys.right, sys.bottom);
+                return insets;
+            });
+            ViewCompat.requestApplyInsets(root);
+        }
         
         // Configure soft keyboard to not resize layout
         getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_PAN);
