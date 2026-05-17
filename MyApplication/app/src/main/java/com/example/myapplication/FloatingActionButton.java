@@ -29,10 +29,11 @@ public class FloatingActionButton extends View {
     private float expandedAnimationValue = 0f;
     
     // Menu buttons
-    private MenuButton[] menuButtons = new MenuButton[3];
+    private MenuButton[] menuButtons = new MenuButton[4];
     private static final int IMAGE_BUTTON = 0;
     private static final int GOALS_BUTTON = 1;
     private static final int WALLPAPER_BUTTON = 2;
+    private static final int REMIND_BUTTON = 3;
     
     // Touch and drag properties
     private boolean isDragging = false;
@@ -62,6 +63,7 @@ public class FloatingActionButton extends View {
         void onImageButtonClick();
         void onGoalsButtonClick();
         void onWallpaperButtonClick();
+        void onReminderButtonClick();
     }
     
     private FABMenuListener menuListener;
@@ -178,6 +180,10 @@ public class FloatingActionButton extends View {
         menuButtons[GOALS_BUTTON] = new MenuButton(0, 0, menuButtonRadius, ContextCompat.getColor(context, R.color.fab_goals), "");
         menuButtons[GOALS_BUTTON].text = "Goals";
         menuButtons[GOALS_BUTTON].icon = "◎";
+
+        menuButtons[REMIND_BUTTON] = new MenuButton(0, 0, menuButtonRadius, ContextCompat.getColor(context, R.color.menu_teal), "");
+        menuButtons[REMIND_BUTTON].text = "Remind";
+        menuButtons[REMIND_BUTTON].icon = "⏰";
         
         setWillNotDraw(false);
     }
@@ -319,11 +325,14 @@ public class FloatingActionButton extends View {
         menuButtons[GOALS_BUTTON].x = mainFabX;
         menuButtons[GOALS_BUTTON].y = mainFabY - (step * 1f * alpha);
 
+        menuButtons[REMIND_BUTTON].x = mainFabX;
+        menuButtons[REMIND_BUTTON].y = mainFabY - (step * 2f * alpha);
+
         menuButtons[WALLPAPER_BUTTON].x = mainFabX;
-        menuButtons[WALLPAPER_BUTTON].y = mainFabY - (step * 2f * alpha);
+        menuButtons[WALLPAPER_BUTTON].y = mainFabY - (step * 3f * alpha);
 
         menuButtons[IMAGE_BUTTON].x = mainFabX;
-        menuButtons[IMAGE_BUTTON].y = mainFabY - (step * 3f * alpha);
+        menuButtons[IMAGE_BUTTON].y = mainFabY - (step * 4f * alpha);
 
         for (MenuButton button : menuButtons) {
             float cy = button.y;
@@ -522,6 +531,9 @@ public class FloatingActionButton extends View {
                 break;
             case WALLPAPER_BUTTON:
                 menuListener.onWallpaperButtonClick();
+                break;
+            case REMIND_BUTTON:
+                menuListener.onReminderButtonClick();
                 break;
         }
     }

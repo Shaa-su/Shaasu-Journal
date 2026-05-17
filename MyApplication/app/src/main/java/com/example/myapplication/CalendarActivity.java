@@ -10,6 +10,11 @@ import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.FrameLayout;
+import android.widget.EditText;
+import android.text.format.DateFormat;
+import android.widget.TimePicker;
+import android.widget.Toast;
+import android.os.Build;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.view.ViewCompat;
@@ -19,6 +24,7 @@ import androidx.core.graphics.Insets;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.appcompat.app.AlertDialog;
 
 import java.util.Calendar;
 import java.util.List;
@@ -27,6 +33,11 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.HashSet;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Locale;
+import java.util.LinkedHashMap;
 
 public class CalendarActivity extends AppCompatActivity {
 
@@ -56,6 +67,13 @@ public class CalendarActivity extends AppCompatActivity {
     private TextView moodPercentBad;
     private TextView moodBreakdownTotal;
     private LinearLayout moodAllMoodsRow;
+
+    private TextView tabStats;
+    private TextView tabReminders;
+    private LinearLayout statsContainer;
+    private LinearLayout remindersContainer;
+    private LinearLayout remindersList;
+    private TextView remindersEmptyText;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -93,6 +111,13 @@ public class CalendarActivity extends AppCompatActivity {
         moodBreakdownTotal = findViewById(R.id.moodBreakdownTotal);
         moodAllMoodsRow = findViewById(R.id.moodAllMoodsRow);
 
+        tabStats = findViewById(R.id.tabStats);
+        tabReminders = findViewById(R.id.tabReminders);
+        statsContainer = findViewById(R.id.statsContainer);
+        remindersContainer = findViewById(R.id.remindersContainer);
+        remindersList = findViewById(R.id.remindersList);
+        remindersEmptyText = findViewById(R.id.remindersEmptyText);
+
         ImageButton backButton = findViewById(R.id.backButton);
         ImageButton prevButton = findViewById(R.id.prevButton);
         ImageButton nextButton = findViewById(R.id.nextButton);
@@ -127,6 +152,15 @@ public class CalendarActivity extends AppCompatActivity {
             openStoryEditor(selectedYear, selectedMonth0, selectedDay);
         });
 
+        if (tabStats != null) {
+            tabStats.setOnClickListener(v -> selectTab(false));
+        }
+        if (tabReminders != null) {
+            tabReminders.setOnClickListener(v -> selectTab(true));
+        }
+
+        selectTab(false);
+
         // Defer heavy loading to the next frame to reduce navigation lag.
         if (recyclerDays != null) {
             recyclerDays.post(this::updateCalendar);
@@ -145,7 +179,10 @@ public class CalendarActivity extends AppCompatActivity {
         monthText.setText(months[month0]);
         yearText.setText(String.valueOf(year));
 
-        List<DayCell> cells = buildCells(year, month0);
+        ReminderStore.cleanupExpired(this);
+        HashSet<String> reminderKeys = ReminderStore.getReminderDateKeys(this);
+
+        List<DayCell> cells = buildCells(year, month0, reminderKeys);
         recyclerDays.setAdapter(new DaysAdapter(cells, cell -> {
             selectedYear = cell.year;
             selectedMonth0 = cell.month0;
@@ -161,6 +198,270 @@ public class CalendarActivity extends AppCompatActivity {
         }));
 
         updateMoodStats(year, month0);
+        updateRemindersList(year, month0);
+    }
+
+    private void selectTab(boolean showReminders) {
+        if (tabStats != null) tabStats.setSelected(!showReminders);
+        if (tabReminders != null) tabReminders.setSelected(showReminders);
+        if (statsContainer != null) statsContainer.setVisibility(showReminders ? View.GONE : View.VISIBLE);
+        if (remindersContainer != null) remindersContainer.setVisibility(showReminders ? View.VISIBLE : View.GONE);
+
+        if (showReminders) {
+            int month0 = currentCalendar.get(Calendar.MONTH);
+            int year = currentCalendar.get(Calendar.YEAR);
+            updateRemindersList(year, month0);
+        }
+    }
+
+    private void updateRemindersList(int year, int month0) {
+        if (remindersList == null) return;
+
+        remindersList.removeAllViews();
+        ReminderStore.cleanupExpired(this);
+        List<Reminder> all = ReminderStore.getAll(this);
+        long now = System.currentTimeMillis();
+        Calendar startOfMonth = Calendar.getInstance();
+        startOfMonth.set(Calendar.YEAR, year);
+        startOfMonth.set(Calendar.MONTH, month0);
+        startOfMonth.set(Calendar.DAY_OF_MONTH, 1);
+        startOfMonth.set(Calendar.HOUR_OF_DAY, 0);
+        startOfMonth.set(Calendar.MINUTE, 0);
+        startOfMonth.set(Calendar.SECOND, 0);
+        startOfMonth.set(Calendar.MILLISECOND, 0);
+
+        Calendar endOfMonth = (Calendar) startOfMonth.clone();
+        endOfMonth.add(Calendar.MONTH, 1);
+        endOfMonth.add(Calendar.MILLISECOND, -1);
+
+        Map<String, List<Reminder>> grouped = new LinkedHashMap<>();
+        for (Reminder r : all) {
+            if (r == null) continue;
+            if (r.triggerAtMillis < now) continue;
+            if (r.triggerAtMillis < startOfMonth.getTimeInMillis()) continue;
+            if (r.triggerAtMillis > endOfMonth.getTimeInMillis()) continue;
+            String key = r.dateKey;
+            if (key == null) continue;
+            if (!grouped.containsKey(key)) grouped.put(key, new ArrayList<>());
+            grouped.get(key).add(r);
+        }
+
+        List<String> dateKeys = new ArrayList<>(grouped.keySet());
+        Collections.sort(dateKeys);
+
+        if (remindersEmptyText != null) {
+            remindersEmptyText.setVisibility(dateKeys.isEmpty() ? View.VISIBLE : View.GONE);
+        }
+
+        LayoutInflater inflater = LayoutInflater.from(this);
+        SimpleDateFormat timeFmt = new SimpleDateFormat("HH:mm", Locale.US);
+        SimpleDateFormat dateFmt = new SimpleDateFormat("MMM d, yyyy", Locale.US);
+
+        for (String dateKey : dateKeys) {
+            List<Reminder> list = grouped.get(dateKey);
+            if (list == null || list.isEmpty()) continue;
+            Collections.sort(list, Comparator.comparingLong(a -> a.triggerAtMillis));
+
+            View section = inflater.inflate(R.layout.item_reminder_date_section, remindersList, false);
+            TextView headerText = section.findViewById(R.id.reminderDateText);
+            TextView headerCount = section.findViewById(R.id.reminderDateCount);
+            LinearLayout dateList = section.findViewById(R.id.reminderDateList);
+            View header = section.findViewById(R.id.reminderDateHeader);
+
+            if (headerText != null) {
+                Date d = parseDateKey(dateKey);
+                headerText.setText(d != null ? dateFmt.format(d) : dateKey);
+            }
+            if (headerCount != null) {
+                headerCount.setText(String.valueOf(list.size()));
+            }
+
+            if (dateList != null) {
+                dateList.removeAllViews();
+                for (Reminder r : list) {
+                    View row = inflater.inflate(R.layout.item_reminder_row, dateList, false);
+                    TextView title = row.findViewById(R.id.reminderTitle);
+                    TextView time = row.findViewById(R.id.reminderTime);
+                    TextView edit = row.findViewById(R.id.reminderEdit);
+                    TextView del = row.findViewById(R.id.reminderDelete);
+
+                    if (title != null) title.setText(r.title);
+                    if (time != null) {
+                        String t = timeFmt.format(new Date(r.triggerAtMillis));
+                        if (r.repeatDaily) t = t + " • Daily";
+                        time.setText(t);
+                    }
+
+                    if (edit != null) {
+                        edit.setOnClickListener(v -> showEditReminderDialog(r));
+                    }
+                    if (del != null) {
+                        del.setOnClickListener(v -> {
+                            ReminderScheduler.cancel(this, r);
+                            ReminderStore.delete(this, r.id);
+                            updateRemindersList(year, month0);
+                            updateCalendar();
+                        });
+                    }
+
+                    dateList.addView(row);
+                }
+            }
+
+            if (header != null && dateList != null) {
+                header.setOnClickListener(v -> {
+                    int vis = dateList.getVisibility();
+                    dateList.setVisibility(vis == View.VISIBLE ? View.GONE : View.VISIBLE);
+                });
+            }
+
+            remindersList.addView(section);
+        }
+    }
+
+    private void showEditReminderDialog(Reminder reminder) {
+        if (reminder == null) return;
+
+        View container = LayoutInflater.from(this).inflate(R.layout.dialog_reminder, null, false);
+        EditText titleInput = container.findViewById(R.id.reminderTitleInput);
+        TextView hourChip = container.findViewById(R.id.reminderHourChip);
+        TextView minuteChip = container.findViewById(R.id.reminderMinuteChip);
+        TextView ampmChip = container.findViewById(R.id.reminderAmPmChip);
+        View timeRow = container.findViewById(R.id.reminderTimeRow);
+        TimePicker timePicker = container.findViewById(R.id.reminderTimePicker);
+        TextView repeatOnce = container.findViewById(R.id.reminderRepeatOnce);
+        TextView repeatDaily = container.findViewById(R.id.reminderRepeatDaily);
+        TextView cancelBtn = container.findViewById(R.id.reminderCancel);
+        TextView saveBtn = container.findViewById(R.id.reminderSave);
+        if (titleInput == null || hourChip == null || minuteChip == null || ampmChip == null
+            || timeRow == null || timePicker == null || repeatOnce == null || repeatDaily == null
+            || cancelBtn == null || saveBtn == null) {
+            return;
+        }
+
+        titleInput.setText(reminder.title);
+        Calendar current = Calendar.getInstance();
+        current.setTimeInMillis(reminder.triggerAtMillis);
+        final int[] chosenHour = {current.get(Calendar.HOUR_OF_DAY)};
+        final int[] chosenMinute = {current.get(Calendar.MINUTE)};
+
+        timePicker.setIs24HourView(DateFormat.is24HourFormat(this));
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            timePicker.setHour(chosenHour[0]);
+            timePicker.setMinute(chosenMinute[0]);
+        } else {
+            timePicker.setCurrentHour(chosenHour[0]);
+            timePicker.setCurrentMinute(chosenMinute[0]);
+        }
+
+        updateTimeChips(hourChip, minuteChip, ampmChip, chosenHour[0], chosenMinute[0]);
+
+        repeatOnce.setSelected(!reminder.repeatDaily);
+        repeatDaily.setSelected(reminder.repeatDaily);
+
+        repeatOnce.setOnClickListener(v -> {
+            repeatOnce.setSelected(true);
+            repeatDaily.setSelected(false);
+        });
+        repeatDaily.setOnClickListener(v -> {
+            repeatDaily.setSelected(true);
+            repeatOnce.setSelected(false);
+        });
+
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setView(container)
+                .create();
+
+        timePicker.setOnTimeChangedListener((view, hour, minute) -> {
+            chosenHour[0] = hour;
+            chosenMinute[0] = minute;
+            updateTimeChips(hourChip, minuteChip, ampmChip, hour, minute);
+        });
+
+        cancelBtn.setOnClickListener(v -> dialog.dismiss());
+        saveBtn.setOnClickListener(v -> {
+            Calendar when = Calendar.getInstance();
+            String[] parts = reminder.dateKey.split("-");
+            int y = Integer.parseInt(parts[0]);
+            int m = Integer.parseInt(parts[1]) - 1;
+            int day = Integer.parseInt(parts[2]);
+            when.set(Calendar.YEAR, y);
+            when.set(Calendar.MONTH, m);
+            when.set(Calendar.DAY_OF_MONTH, day);
+            when.set(Calendar.HOUR_OF_DAY, chosenHour[0]);
+            when.set(Calendar.MINUTE, chosenMinute[0]);
+            when.set(Calendar.SECOND, 0);
+            when.set(Calendar.MILLISECOND, 0);
+
+            if (when.getTimeInMillis() <= System.currentTimeMillis()) {
+                Toast.makeText(this, "Pick a future time", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            Reminder updated = Reminder.update(
+                    reminder.id,
+                    titleInput.getText() != null ? titleInput.getText().toString() : "Reminder",
+                    when.getTimeInMillis(),
+                    reminder.dateKey,
+                    repeatDaily.isSelected()
+            );
+
+            ReminderScheduler.cancel(this, reminder);
+            ReminderStore.put(this, updated);
+            ReminderScheduler.schedule(this, updated);
+            updateRemindersList(currentCalendar.get(Calendar.YEAR), currentCalendar.get(Calendar.MONTH));
+            updateCalendar();
+            dialog.dismiss();
+        });
+
+        dialog.show();
+    }
+
+    private Date parseDateKey(String dateKey) {
+        if (dateKey == null) return null;
+        try {
+            String[] parts = dateKey.split("-");
+            if (parts.length != 3) return null;
+            int y = Integer.parseInt(parts[0]);
+            int m = Integer.parseInt(parts[1]) - 1;
+            int d = Integer.parseInt(parts[2]);
+            Calendar c = Calendar.getInstance();
+            c.set(Calendar.YEAR, y);
+            c.set(Calendar.MONTH, m);
+            c.set(Calendar.DAY_OF_MONTH, d);
+            c.set(Calendar.HOUR_OF_DAY, 0);
+            c.set(Calendar.MINUTE, 0);
+            c.set(Calendar.SECOND, 0);
+            c.set(Calendar.MILLISECOND, 0);
+            return c.getTime();
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
+
+    private void updateTimeChips(TextView hourChip, TextView minuteChip, TextView ampmChip, int hour24, int minute) {
+        boolean is24 = DateFormat.is24HourFormat(this);
+        int displayHour = hour24;
+        String ampm = "AM";
+        if (!is24) {
+            if (hour24 >= 12) ampm = "PM";
+            displayHour = hour24 % 12;
+            if (displayHour == 0) displayHour = 12;
+        }
+        if (hourChip != null) hourChip.setText(String.format(Locale.US, "%02d", displayHour));
+        if (minuteChip != null) minuteChip.setText(String.format(Locale.US, "%02d", minute));
+        if (ampmChip != null) {
+            if (is24) {
+                ampmChip.setVisibility(View.GONE);
+            } else {
+                ampmChip.setVisibility(View.VISIBLE);
+                ampmChip.setText(ampm);
+            }
+        }
+    }
+
+    private int dpToPx(int dp) {
+        return Math.round(dp * getResources().getDisplayMetrics().density);
     }
 
     private void updateMoodStats(int year, int month0) {
@@ -334,7 +635,7 @@ public class CalendarActivity extends AppCompatActivity {
         }
     }
 
-    private List<DayCell> buildCells(int year, int month0) {
+    private List<DayCell> buildCells(int year, int month0, HashSet<String> reminderKeys) {
         Calendar firstOfMonth = Calendar.getInstance();
         firstOfMonth.set(Calendar.YEAR, year);
         firstOfMonth.set(Calendar.MONTH, month0);
@@ -365,11 +666,11 @@ public class CalendarActivity extends AppCompatActivity {
             int day = (daysInPrevMonth - offset + 1) + i;
             int cellMonth0 = prevMonth.get(Calendar.MONTH);
             int cellYear = prevMonth.get(Calendar.YEAR);
-            cells.add(makeCell(sharedPref, todayY, todayM, todayD, cellYear, cellMonth0, day, false));
+            cells.add(makeCell(sharedPref, reminderKeys, todayY, todayM, todayD, cellYear, cellMonth0, day, false));
         }
 
         for (int day = 1; day <= daysInMonth; day++) {
-            cells.add(makeCell(sharedPref, todayY, todayM, todayD, year, month0, day, true));
+            cells.add(makeCell(sharedPref, reminderKeys, todayY, todayM, todayD, year, month0, day, true));
         }
 
         Calendar nextMonth = (Calendar) firstOfMonth.clone();
@@ -379,19 +680,20 @@ public class CalendarActivity extends AppCompatActivity {
 
         int day = 1;
         while (cells.size() < 42) {
-            cells.add(makeCell(sharedPref, todayY, todayM, todayD, nextYear, nextMonth0, day, false));
+            cells.add(makeCell(sharedPref, reminderKeys, todayY, todayM, todayD, nextYear, nextMonth0, day, false));
             day++;
         }
 
         return cells;
     }
 
-    private DayCell makeCell(SharedPreferences sharedPref,
+    private DayCell makeCell(SharedPreferences sharedPref, HashSet<String> reminderKeys,
                             int todayY, int todayM, int todayD,
                             int year, int month0, int day,
                             boolean inCurrentMonth) {
         String dateKey = year + "-" + String.format("%02d", month0 + 1) + "-" + String.format("%02d", day);
         boolean hasEntry = sharedPref.contains(dateKey);
+        boolean hasReminder = reminderKeys != null && reminderKeys.contains(dateKey);
         boolean hasMood = false;
         String moodEmoji = null;
         if (hasEntry) {
@@ -405,7 +707,7 @@ public class CalendarActivity extends AppCompatActivity {
         }
         boolean isToday = (year == todayY && month0 == todayM && day == todayD);
         boolean isSelected = (year == selectedYear && month0 == selectedMonth0 && day == selectedDay);
-        return new DayCell(year, month0, day, inCurrentMonth, isToday, hasEntry, hasMood, moodEmoji, isSelected);
+        return new DayCell(year, month0, day, inCurrentMonth, isToday, hasEntry, hasReminder, hasMood, moodEmoji, isSelected);
     }
 
     private static final class DayCell {
@@ -415,17 +717,19 @@ public class CalendarActivity extends AppCompatActivity {
         final boolean inCurrentMonth;
         final boolean isToday;
         final boolean hasEntry;
+        final boolean hasReminder;
         final boolean hasMood;
         final String moodEmoji;
         final boolean isSelected;
 
-        DayCell(int year, int month0, int day, boolean inCurrentMonth, boolean isToday, boolean hasEntry, boolean hasMood, String moodEmoji, boolean isSelected) {
+        DayCell(int year, int month0, int day, boolean inCurrentMonth, boolean isToday, boolean hasEntry, boolean hasReminder, boolean hasMood, String moodEmoji, boolean isSelected) {
             this.year = year;
             this.month0 = month0;
             this.day = day;
             this.inCurrentMonth = inCurrentMonth;
             this.isToday = isToday;
             this.hasEntry = hasEntry;
+            this.hasReminder = hasReminder;
             this.hasMood = hasMood;
             this.moodEmoji = moodEmoji;
             this.isSelected = isSelected;
@@ -477,6 +781,10 @@ public class CalendarActivity extends AppCompatActivity {
                 h.moodEmoji.setVisibility(View.GONE);
             }
 
+            if (h.reminderBadge != null) {
+                h.reminderBadge.setVisibility(cell.hasReminder ? View.VISIBLE : View.GONE);
+            }
+
             if (!cell.isSelected && cell.isToday) {
                 h.dot.setVisibility(View.VISIBLE);
                 h.dot.setBackgroundResource(R.drawable.bg_cal_dot_today);
@@ -507,12 +815,14 @@ public class CalendarActivity extends AppCompatActivity {
             final TextView txtDay;
             final View dot;
             final TextView moodEmoji;
+            final TextView reminderBadge;
 
             VH(@NonNull View itemView) {
                 super(itemView);
                 txtDay = itemView.findViewById(R.id.txtDay);
                 dot = itemView.findViewById(R.id.dot);
                 moodEmoji = itemView.findViewById(R.id.moodEmoji);
+                reminderBadge = itemView.findViewById(R.id.reminderBadge);
             }
         }
     }

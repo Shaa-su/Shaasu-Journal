@@ -28,8 +28,15 @@ import android.view.ScaleGestureDetector;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.ImageButton;
+import android.widget.TimePicker;
+import android.widget.CheckBox;
+import android.text.format.DateFormat;
+import android.os.Build;
 import android.view.inputmethod.EditorInfo;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.app.AlertDialog;
+import androidx.core.app.ActivityCompat;
+import android.content.pm.PackageManager;
 import androidx.appcompat.content.res.AppCompatResources;
 import androidx.core.content.ContextCompat;
 import androidx.core.view.ViewCompat;
@@ -39,8 +46,10 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Calendar;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -96,6 +105,7 @@ public class StoryDetailActivity extends AppCompatActivity {
     
     private static final int PICK_IMAGE_REQUEST = 1;
     private static final int PICK_WALLPAPER_REQUEST = 2;
+    private static final int REQ_POST_NOTIFICATIONS = 1001;
     private static final int MAX_INLINE_IMAGE_WIDTH_PX = 900;
     private static final int MIN_INLINE_IMAGE_WIDTH_PX = 80;
     private static final int DEFAULT_INLINE_IMAGE_WIDTH_PX = 300;
@@ -113,6 +123,7 @@ public class StoryDetailActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
 
         StoryStore.migrateIfNeeded(this);
+        ReminderStore.cleanupExpired(this);
 
         setContentView(R.layout.activity_story_detail);
 
@@ -246,7 +257,161 @@ public class StoryDetailActivity extends AppCompatActivity {
             public void onWallpaperButtonClick() {
                 openWallpaperPicker();
             }
+
+            @Override
+            public void onReminderButtonClick() {
+                showReminderDialog();
+            }
         });
+    }
+
+    private void showReminderDialog() {
+        dismissInlineImageResizePopup();
+        if (customFab != null) customFab.collapseImmediately();
+
+        if (!ensureNotificationPermission()) return;
+
+        Calendar today = Calendar.getInstance();
+        Calendar selected = Calendar.getInstance();
+        selected.set(Calendar.YEAR, selectedYear);
+        selected.set(Calendar.MONTH, selectedMonth);
+        selected.set(Calendar.DAY_OF_MONTH, selectedDay);
+        selected.set(Calendar.HOUR_OF_DAY, 0);
+        selected.set(Calendar.MINUTE, 0);
+        selected.set(Calendar.SECOND, 0);
+        selected.set(Calendar.MILLISECOND, 0);
+
+        Calendar todayStart = (Calendar) today.clone();
+        todayStart.set(Calendar.HOUR_OF_DAY, 0);
+        todayStart.set(Calendar.MINUTE, 0);
+        todayStart.set(Calendar.SECOND, 0);
+        todayStart.set(Calendar.MILLISECOND, 0);
+
+        if (selected.before(todayStart)) {
+            Toast.makeText(this, "You can only set reminders for today or future dates", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        View container = LayoutInflater.from(this).inflate(R.layout.dialog_reminder, null, false);
+        EditText titleInput = container.findViewById(R.id.reminderTitleInput);
+        TextView hourChip = container.findViewById(R.id.reminderHourChip);
+        TextView minuteChip = container.findViewById(R.id.reminderMinuteChip);
+        TextView ampmChip = container.findViewById(R.id.reminderAmPmChip);
+        View timeRow = container.findViewById(R.id.reminderTimeRow);
+        TimePicker timePicker = container.findViewById(R.id.reminderTimePicker);
+        TextView repeatOnce = container.findViewById(R.id.reminderRepeatOnce);
+        TextView repeatDaily = container.findViewById(R.id.reminderRepeatDaily);
+        TextView cancelBtn = container.findViewById(R.id.reminderCancel);
+        TextView saveBtn = container.findViewById(R.id.reminderSave);
+        if (titleInput == null || hourChip == null || minuteChip == null || ampmChip == null
+            || timeRow == null || timePicker == null || repeatOnce == null || repeatDaily == null
+            || cancelBtn == null || saveBtn == null) {
+            return;
+        }
+        Calendar defaultTime = Calendar.getInstance();
+        if (selectedYear == today.get(Calendar.YEAR) && selectedMonth == today.get(Calendar.MONTH) && selectedDay == today.get(Calendar.DAY_OF_MONTH)) {
+            defaultTime.add(Calendar.HOUR_OF_DAY, 1);
+        } else {
+            defaultTime.set(Calendar.HOUR_OF_DAY, 9);
+            defaultTime.set(Calendar.MINUTE, 0);
+        }
+        final int[] chosenHour = {defaultTime.get(Calendar.HOUR_OF_DAY)};
+        final int[] chosenMinute = {defaultTime.get(Calendar.MINUTE)};
+
+        timePicker.setIs24HourView(DateFormat.is24HourFormat(this));
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            timePicker.setHour(chosenHour[0]);
+            timePicker.setMinute(chosenMinute[0]);
+        } else {
+            timePicker.setCurrentHour(chosenHour[0]);
+            timePicker.setCurrentMinute(chosenMinute[0]);
+        }
+
+        updateTimeChips(hourChip, minuteChip, ampmChip, chosenHour[0], chosenMinute[0]);
+
+        repeatOnce.setSelected(true);
+        repeatDaily.setSelected(false);
+
+        repeatOnce.setOnClickListener(v -> {
+            repeatOnce.setSelected(true);
+            repeatDaily.setSelected(false);
+        });
+        repeatDaily.setOnClickListener(v -> {
+            repeatDaily.setSelected(true);
+            repeatOnce.setSelected(false);
+        });
+
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setView(container)
+                .create();
+
+        timePicker.setOnTimeChangedListener((view, hour, minute) -> {
+            chosenHour[0] = hour;
+            chosenMinute[0] = minute;
+            updateTimeChips(hourChip, minuteChip, ampmChip, hour, minute);
+        });
+
+        cancelBtn.setOnClickListener(v -> dialog.dismiss());
+        saveBtn.setOnClickListener(v -> {
+            Calendar when = Calendar.getInstance();
+            when.set(Calendar.YEAR, selectedYear);
+            when.set(Calendar.MONTH, selectedMonth);
+            when.set(Calendar.DAY_OF_MONTH, selectedDay);
+            when.set(Calendar.HOUR_OF_DAY, chosenHour[0]);
+            when.set(Calendar.MINUTE, chosenMinute[0]);
+            when.set(Calendar.SECOND, 0);
+            when.set(Calendar.MILLISECOND, 0);
+
+            if (when.getTimeInMillis() <= System.currentTimeMillis()) {
+                Toast.makeText(this, "Pick a future time", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            String dateKey = selectedYear + "-" + String.format("%02d", selectedMonth + 1) + "-" + String.format("%02d", selectedDay);
+            boolean repeat = repeatDaily.isSelected();
+            Reminder reminder = Reminder.create(titleInput.getText().toString(), when.getTimeInMillis(), dateKey, repeat);
+            ReminderStore.put(this, reminder);
+            ReminderScheduler.schedule(this, reminder);
+            Toast.makeText(this, "Reminder set", Toast.LENGTH_SHORT).show();
+            dialog.dismiss();
+        });
+
+        dialog.show();
+    }
+
+    private void updateTimeChips(TextView hourChip, TextView minuteChip, TextView ampmChip, int hour24, int minute) {
+        boolean is24 = DateFormat.is24HourFormat(this);
+        int displayHour = hour24;
+        String ampm = "AM";
+        if (!is24) {
+            if (hour24 >= 12) ampm = "PM";
+            displayHour = hour24 % 12;
+            if (displayHour == 0) displayHour = 12;
+        }
+        if (hourChip != null) hourChip.setText(String.format(Locale.US, "%02d", displayHour));
+        if (minuteChip != null) minuteChip.setText(String.format(Locale.US, "%02d", minute));
+        if (ampmChip != null) {
+            if (is24) {
+                ampmChip.setVisibility(View.GONE);
+            } else {
+                ampmChip.setVisibility(View.VISIBLE);
+                ampmChip.setText(ampm);
+            }
+        }
+    }
+
+    private boolean ensureNotificationPermission() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return true;
+        if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS)
+                == PackageManager.PERMISSION_GRANTED) {
+            return true;
+        }
+        ActivityCompat.requestPermissions(
+                this,
+                new String[]{android.Manifest.permission.POST_NOTIFICATIONS},
+                REQ_POST_NOTIFICATIONS
+        );
+        return false;
     }
 
     private void showSaveSuccessAndReset(boolean autoFinish) {

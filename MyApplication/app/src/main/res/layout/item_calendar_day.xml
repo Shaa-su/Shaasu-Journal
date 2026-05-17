@@ -35,4 +35,16 @@
         android:text="😊"
         android:textSize="12sp" />
 
+    <TextView
+        android:id="@+id/reminderBadge"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|end"
+        android:layout_marginEnd="4dp"
+        android:layout_marginBottom="2dp"
+        android:text="⏰"
+        android:textSize="10sp"
+        android:visibility="gone"
+        android:alpha="0.9" />
+
 </FrameLayout>

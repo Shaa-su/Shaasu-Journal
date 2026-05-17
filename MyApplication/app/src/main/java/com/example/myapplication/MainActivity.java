@@ -40,6 +40,7 @@ public class MainActivity extends AppCompatActivity {
 
         // One-time migration from legacy plaintext prefs to encrypted prefs.
         StoryStore.migrateIfNeeded(this);
+        ReminderScheduler.rescheduleAll(this);
 
         setContentView(R.layout.activity_main);
         
@@ -92,8 +93,10 @@ public class MainActivity extends AppCompatActivity {
     
     private void handleExportData() {
         Map<String, ?> allEntries = StoryStore.get(this).getAll();
+        boolean hasStories = !allEntries.isEmpty();
+        boolean hasReminders = !ReminderStore.getAll(this).isEmpty();
 
-        if (allEntries.isEmpty()) {
+        if (!hasStories && !hasReminders) {
             Toast.makeText(this, "No data to export", Toast.LENGTH_SHORT).show();
             return;
         }
@@ -178,14 +181,24 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
 
-            if (storiesJson.length() == 0) {
-                Toast.makeText(this, "No story strings to export", Toast.LENGTH_SHORT).show();
+            org.json.JSONArray remindersJson = new org.json.JSONArray();
+            for (Reminder r : ReminderStore.getAll(this)) {
+                if (r != null) remindersJson.put(r.toJson());
+            }
+
+            if (storiesJson.length() == 0 && remindersJson.length() == 0) {
+                Toast.makeText(this, "No data to export", Toast.LENGTH_SHORT).show();
                 return;
             }
 
             JSONObject root = new JSONObject();
             root.put("export_date", new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(new Date()));
-            root.put("stories", storiesJson);
+            if (storiesJson.length() > 0) {
+                root.put("stories", storiesJson);
+            }
+            if (remindersJson.length() > 0) {
+                root.put("reminders", remindersJson);
+            }
 
             JSONObject envelope = ExportCrypto.encryptToEnvelope(root.toString(), password);
 
@@ -214,8 +227,8 @@ public class MainActivity extends AppCompatActivity {
                     try {
                         String plaintext = ExportCrypto.decryptEnvelope(jsonObject, password);
                         JSONObject plainRoot = new JSONObject(plaintext);
-                        int count = importFromPlainRoot(plainRoot);
-                        Toast.makeText(this, "Successfully imported " + count + " stories!", Toast.LENGTH_LONG).show();
+                        ImportResult result = importFromPlainRoot(plainRoot);
+                        Toast.makeText(this, formatImportMessage(result), Toast.LENGTH_LONG).show();
                     } catch (GeneralSecurityException sec) {
                         Toast.makeText(this, "Wrong password or corrupted file", Toast.LENGTH_SHORT).show();
                     } catch (Exception e) {
@@ -227,8 +240,8 @@ public class MainActivity extends AppCompatActivity {
                 return;
             }
 
-            int count = importFromPlainRoot(jsonObject);
-            Toast.makeText(this, "Successfully imported " + count + " stories!", Toast.LENGTH_LONG).show();
+            ImportResult result = importFromPlainRoot(jsonObject);
+            Toast.makeText(this, formatImportMessage(result), Toast.LENGTH_LONG).show();
         } catch (Exception e) {
             Toast.makeText(this, "Import failed: " + e.getMessage(), Toast.LENGTH_SHORT).show();
         }
@@ -246,32 +259,78 @@ public class MainActivity extends AppCompatActivity {
         return new JSONObject(jsonContent.toString());
     }
 
-    private int importFromPlainRoot(JSONObject root) throws Exception {
-        JSONObject storiesObject = root.getJSONObject("stories");
+    private ImportResult importFromPlainRoot(JSONObject root) throws Exception {
+        int importedStories = 0;
+        int importedReminders = 0;
 
-        // Validate first into a temp map (so a bad file can't wipe existing data)
-        HashMap<String, String> toImport = new HashMap<>();
-        Iterator<String> keys = storiesObject.keys();
-        int importedCount = 0;
-        while (keys.hasNext()) {
-            String key = keys.next();
-            Object val = storiesObject.get(key);
-            if (!(val instanceof String)) {
-                throw new IllegalArgumentException("Invalid story value for key: " + key);
+        if (root.has("stories")) {
+            JSONObject storiesObject = root.getJSONObject("stories");
+
+            // Validate first into a temp map (so a bad file can't wipe existing data)
+            HashMap<String, String> toImport = new HashMap<>();
+            Iterator<String> keys = storiesObject.keys();
+            while (keys.hasNext()) {
+                String key = keys.next();
+                Object val = storiesObject.get(key);
+                if (!(val instanceof String)) {
+                    throw new IllegalArgumentException("Invalid story value for key: " + key);
+                }
+                toImport.put(key, (String) val);
+                importedStories++;
             }
-            toImport.put(key, (String) val);
-            importedCount++;
+
+            // Replace existing only after validation
+            android.content.SharedPreferences sharedPref = StoryStore.get(this);
+            android.content.SharedPreferences.Editor editor = sharedPref.edit();
+            editor.clear();
+            for (Map.Entry<String, String> e : toImport.entrySet()) {
+                editor.putString(e.getKey(), e.getValue());
+            }
+            editor.apply();
         }
 
-        // Replace existing only after validation
-        android.content.SharedPreferences sharedPref = StoryStore.get(this);
-        android.content.SharedPreferences.Editor editor = sharedPref.edit();
-        editor.clear();
-        for (Map.Entry<String, String> e : toImport.entrySet()) {
-            editor.putString(e.getKey(), e.getValue());
+        if (root.has("reminders")) {
+            org.json.JSONArray remindersArray = root.getJSONArray("reminders");
+            java.util.List<Reminder> reminders = new java.util.ArrayList<>();
+            for (int i = 0; i < remindersArray.length(); i++) {
+                Object obj = remindersArray.get(i);
+                if (!(obj instanceof org.json.JSONObject)) {
+                    throw new IllegalArgumentException("Invalid reminder entry");
+                }
+                Reminder r = Reminder.fromJson((org.json.JSONObject) obj);
+                if (r == null) {
+                    throw new IllegalArgumentException("Invalid reminder entry");
+                }
+                reminders.add(r);
+            }
+
+            ReminderStore.clear(this);
+            for (Reminder r : reminders) {
+                ReminderStore.put(this, r);
+                importedReminders++;
+            }
+            ReminderScheduler.rescheduleAll(this);
         }
-        editor.apply();
-        return importedCount;
+
+        return new ImportResult(importedStories, importedReminders);
+    }
+
+    private String formatImportMessage(ImportResult result) {
+        if (result == null) return "Import complete";
+        if (result.reminders == 0) {
+            return "Successfully imported " + result.stories + " stories!";
+        }
+        return "Successfully imported " + result.stories + " stories and " + result.reminders + " reminders!";
+    }
+
+    private static final class ImportResult {
+        final int stories;
+        final int reminders;
+
+        ImportResult(int stories, int reminders) {
+            this.stories = stories;
+            this.reminders = reminders;
+        }
     }
 
     private interface PasswordCallback {
