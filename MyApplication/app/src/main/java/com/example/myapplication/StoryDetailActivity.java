@@ -17,6 +17,7 @@ import android.text.style.ImageSpan;
 import android.util.Base64;
 import android.widget.Button;
 import android.widget.EditText;
+import android.text.InputType;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.PopupWindow;
@@ -26,12 +27,14 @@ import android.widget.Toast;
 import android.view.LayoutInflater;
 import android.view.ScaleGestureDetector;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.widget.ImageButton;
-import android.widget.TimePicker;
 import android.widget.CheckBox;
 import android.text.format.DateFormat;
 import android.os.Build;
+import android.graphics.Color;
+import android.graphics.drawable.ColorDrawable;
 import android.view.inputmethod.EditorInfo;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.app.AlertDialog;
@@ -272,22 +275,15 @@ public class StoryDetailActivity extends AppCompatActivity {
         if (!ensureNotificationPermission()) return;
 
         Calendar today = Calendar.getInstance();
-        Calendar selected = Calendar.getInstance();
-        selected.set(Calendar.YEAR, selectedYear);
-        selected.set(Calendar.MONTH, selectedMonth);
-        selected.set(Calendar.DAY_OF_MONTH, selectedDay);
-        selected.set(Calendar.HOUR_OF_DAY, 0);
-        selected.set(Calendar.MINUTE, 0);
-        selected.set(Calendar.SECOND, 0);
-        selected.set(Calendar.MILLISECOND, 0);
+        int ty = today.get(Calendar.YEAR);
+        int tm = today.get(Calendar.MONTH);
+        int td = today.get(Calendar.DAY_OF_MONTH);
 
-        Calendar todayStart = (Calendar) today.clone();
-        todayStart.set(Calendar.HOUR_OF_DAY, 0);
-        todayStart.set(Calendar.MINUTE, 0);
-        todayStart.set(Calendar.SECOND, 0);
-        todayStart.set(Calendar.MILLISECOND, 0);
+        boolean isPastDate = (selectedYear < ty)
+            || (selectedYear == ty && selectedMonth < tm)
+            || (selectedYear == ty && selectedMonth == tm && selectedDay < td);
 
-        if (selected.before(todayStart)) {
+        if (isPastDate) {
             Toast.makeText(this, "You can only set reminders for today or future dates", Toast.LENGTH_SHORT).show();
             return;
         }
@@ -298,14 +294,15 @@ public class StoryDetailActivity extends AppCompatActivity {
         TextView minuteChip = container.findViewById(R.id.reminderMinuteChip);
         TextView ampmChip = container.findViewById(R.id.reminderAmPmChip);
         View timeRow = container.findViewById(R.id.reminderTimeRow);
-        TimePicker timePicker = container.findViewById(R.id.reminderTimePicker);
+        TextView modeLabel = container.findViewById(R.id.reminderModeLabel);
+        ReminderClockView clockView = container.findViewById(R.id.reminderClock);
         TextView repeatOnce = container.findViewById(R.id.reminderRepeatOnce);
         TextView repeatDaily = container.findViewById(R.id.reminderRepeatDaily);
         TextView cancelBtn = container.findViewById(R.id.reminderCancel);
         TextView saveBtn = container.findViewById(R.id.reminderSave);
         if (titleInput == null || hourChip == null || minuteChip == null || ampmChip == null
-            || timeRow == null || timePicker == null || repeatOnce == null || repeatDaily == null
-            || cancelBtn == null || saveBtn == null) {
+            || timeRow == null || modeLabel == null || clockView == null
+            || repeatOnce == null || repeatDaily == null || cancelBtn == null || saveBtn == null) {
             return;
         }
         Calendar defaultTime = Calendar.getInstance();
@@ -318,14 +315,7 @@ public class StoryDetailActivity extends AppCompatActivity {
         final int[] chosenHour = {defaultTime.get(Calendar.HOUR_OF_DAY)};
         final int[] chosenMinute = {defaultTime.get(Calendar.MINUTE)};
 
-        timePicker.setIs24HourView(DateFormat.is24HourFormat(this));
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            timePicker.setHour(chosenHour[0]);
-            timePicker.setMinute(chosenMinute[0]);
-        } else {
-            timePicker.setCurrentHour(chosenHour[0]);
-            timePicker.setCurrentMinute(chosenMinute[0]);
-        }
+        clockView.setTime(chosenHour[0], chosenMinute[0], DateFormat.is24HourFormat(this));
 
         updateTimeChips(hourChip, minuteChip, ampmChip, chosenHour[0], chosenMinute[0]);
 
@@ -345,10 +335,61 @@ public class StoryDetailActivity extends AppCompatActivity {
                 .setView(container)
                 .create();
 
-        timePicker.setOnTimeChangedListener((view, hour, minute) -> {
-            chosenHour[0] = hour;
-            chosenMinute[0] = minute;
-            updateTimeChips(hourChip, minuteChip, ampmChip, hour, minute);
+        dialog.setOnShowListener(d -> {
+            if (dialog.getWindow() != null) {
+                dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+                dialog.getWindow().setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            }
+        });
+
+        clockView.setOnTimeChangeListener((h, m, mode) -> {
+            chosenHour[0] = h;
+            chosenMinute[0] = m;
+            updateTimeChips(hourChip, minuteChip, ampmChip, h, m);
+            modeLabel.setText(mode == ReminderClockView.Mode.HOUR ? "Select Hour" : "Select Minute");
+        });
+
+        timeRow.setOnClickListener(v -> {
+            ReminderClockView.Mode mode = clockView.getMode();
+            ReminderClockView.Mode next = (mode == ReminderClockView.Mode.HOUR)
+                    ? ReminderClockView.Mode.MINUTE
+                    : ReminderClockView.Mode.HOUR;
+            clockView.setMode(next);
+            modeLabel.setText(next == ReminderClockView.Mode.HOUR ? "Select Hour" : "Select Minute");
+        });
+
+        hourChip.setOnClickListener(v -> {
+            showNumberInput("Set Hour", DateFormat.is24HourFormat(this) ? 0 : 1,
+                    DateFormat.is24HourFormat(this) ? 23 : 12, chosenHour[0] % 12 == 0 ? 12 : chosenHour[0] % 12, value -> {
+                        int hour = value;
+                        if (!DateFormat.is24HourFormat(this)) {
+                            boolean pm = chosenHour[0] >= 12;
+                            hour = (value % 12) + (pm ? 12 : 0);
+                            if (hour == 24) hour = 0;
+                        }
+                        chosenHour[0] = hour;
+                        updateTimeChips(hourChip, minuteChip, ampmChip, chosenHour[0], chosenMinute[0]);
+                        clockView.setTime(chosenHour[0], chosenMinute[0], DateFormat.is24HourFormat(this));
+                    });
+        });
+
+        minuteChip.setOnClickListener(v -> {
+            showNumberInput("Set Minute", 0, 59, chosenMinute[0], value -> {
+                chosenMinute[0] = value;
+                updateTimeChips(hourChip, minuteChip, ampmChip, chosenHour[0], chosenMinute[0]);
+                clockView.setTime(chosenHour[0], chosenMinute[0], DateFormat.is24HourFormat(this));
+            });
+        });
+
+        ampmChip.setOnClickListener(v -> {
+            if (DateFormat.is24HourFormat(this)) return;
+            if (chosenHour[0] >= 12) {
+                chosenHour[0] -= 12;
+            } else {
+                chosenHour[0] += 12;
+            }
+            updateTimeChips(hourChip, minuteChip, ampmChip, chosenHour[0], chosenMinute[0]);
+            clockView.setTime(chosenHour[0], chosenMinute[0], DateFormat.is24HourFormat(this));
         });
 
         cancelBtn.setOnClickListener(v -> dialog.dismiss());
@@ -377,6 +418,35 @@ public class StoryDetailActivity extends AppCompatActivity {
         });
 
         dialog.show();
+    }
+
+    private interface NumberInputCallback {
+        void onValue(int value);
+    }
+
+    private void showNumberInput(String title, int min, int max, int current, NumberInputCallback cb) {
+        EditText input = new EditText(this);
+        input.setInputType(InputType.TYPE_CLASS_NUMBER);
+        input.setHint(String.valueOf(current));
+
+        new AlertDialog.Builder(this)
+                .setTitle(title)
+                .setView(input)
+                .setPositiveButton("OK", (d, w) -> {
+                    String txt = input.getText() != null ? input.getText().toString() : "";
+                    try {
+                        int val = Integer.parseInt(txt);
+                        if (val < min || val > max) {
+                            Toast.makeText(this, "Enter a value between " + min + " and " + max, Toast.LENGTH_SHORT).show();
+                            return;
+                        }
+                        if (cb != null) cb.onValue(val);
+                    } catch (NumberFormatException ignored) {
+                        Toast.makeText(this, "Invalid number", Toast.LENGTH_SHORT).show();
+                    }
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
     }
 
     private void updateTimeChips(TextView hourChip, TextView minuteChip, TextView ampmChip, int hour24, int minute) {
