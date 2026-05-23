@@ -325,18 +325,27 @@ public class CalendarActivity extends AppCompatActivity {
 
         View container = LayoutInflater.from(this).inflate(R.layout.dialog_reminder, null, false);
         EditText titleInput = container.findViewById(R.id.reminderTitleInput);
+        TextView toggleClock = container.findViewById(R.id.reminderToggleClock);
+        TextView toggleKeyboard = container.findViewById(R.id.reminderToggleKeyboard);
         TextView hourChip = container.findViewById(R.id.reminderHourChip);
         TextView minuteChip = container.findViewById(R.id.reminderMinuteChip);
         TextView ampmChip = container.findViewById(R.id.reminderAmPmChip);
         View timeRow = container.findViewById(R.id.reminderTimeRow);
+        TextView pickTimeHint = container.findViewById(R.id.reminderPickTimeHint);
         TextView modeLabel = container.findViewById(R.id.reminderModeLabel);
         ReminderClockView clockView = container.findViewById(R.id.reminderClock);
+        View keyboardRow = container.findViewById(R.id.reminderKeyboardRow);
+        EditText hourInput = container.findViewById(R.id.reminderHourInput);
+        EditText minuteInput = container.findViewById(R.id.reminderMinuteInput);
+        TextView keyboardAmPm = container.findViewById(R.id.reminderKeyboardAmPm);
         TextView repeatOnce = container.findViewById(R.id.reminderRepeatOnce);
         TextView repeatDaily = container.findViewById(R.id.reminderRepeatDaily);
         TextView cancelBtn = container.findViewById(R.id.reminderCancel);
         TextView saveBtn = container.findViewById(R.id.reminderSave);
-        if (titleInput == null || hourChip == null || minuteChip == null || ampmChip == null
-            || timeRow == null || modeLabel == null || clockView == null
+        if (titleInput == null || toggleClock == null || toggleKeyboard == null
+            || hourChip == null || minuteChip == null || ampmChip == null
+            || timeRow == null || pickTimeHint == null || modeLabel == null || clockView == null
+            || keyboardRow == null || hourInput == null || minuteInput == null || keyboardAmPm == null
             || repeatOnce == null || repeatDaily == null || cancelBtn == null || saveBtn == null) {
             return;
         }
@@ -346,10 +355,54 @@ public class CalendarActivity extends AppCompatActivity {
         current.setTimeInMillis(reminder.triggerAtMillis);
         final int[] chosenHour = {current.get(Calendar.HOUR_OF_DAY)};
         final int[] chosenMinute = {current.get(Calendar.MINUTE)};
+        final boolean is24 = DateFormat.is24HourFormat(this);
 
         clockView.setTime(chosenHour[0], chosenMinute[0], DateFormat.is24HourFormat(this));
 
         updateTimeChips(hourChip, minuteChip, ampmChip, chosenHour[0], chosenMinute[0]);
+
+        toggleClock.setBackgroundResource(R.drawable.bg_reminder_time_chip_selected);
+        toggleKeyboard.setBackgroundResource(R.drawable.bg_reminder_time_chip);
+        keyboardRow.setVisibility(View.GONE);
+        clockView.setVisibility(View.VISIBLE);
+        pickTimeHint.setVisibility(View.VISIBLE);
+        modeLabel.setVisibility(View.VISIBLE);
+
+        Runnable syncInputsFromChosen = () -> {
+            int displayHour = chosenHour[0];
+            if (!is24) {
+                displayHour = chosenHour[0] % 12;
+                if (displayHour == 0) displayHour = 12;
+            }
+            hourInput.setText(String.format(Locale.US, "%02d", displayHour));
+            minuteInput.setText(String.format(Locale.US, "%02d", chosenMinute[0]));
+            if (is24) {
+                keyboardAmPm.setVisibility(View.GONE);
+            } else {
+                keyboardAmPm.setVisibility(View.VISIBLE);
+                keyboardAmPm.setText(chosenHour[0] >= 12 ? "PM" : "AM");
+            }
+        };
+
+        Runnable syncChosenFromInputs = () -> {
+            int hourVal = safeParseInt(hourInput.getText() != null ? hourInput.getText().toString().trim() : "", is24 ? chosenHour[0] : 12);
+            int minuteVal = safeParseInt(minuteInput.getText() != null ? minuteInput.getText().toString().trim() : "", chosenMinute[0]);
+            minuteVal = Math.max(0, Math.min(59, minuteVal));
+
+            if (is24) {
+                hourVal = Math.max(0, Math.min(23, hourVal));
+                chosenHour[0] = hourVal;
+            } else {
+                hourVal = Math.max(1, Math.min(12, hourVal));
+                boolean pm = "PM".equalsIgnoreCase(keyboardAmPm.getText().toString());
+                int hour24 = (hourVal % 12) + (pm ? 12 : 0);
+                if (hour24 == 24) hour24 = 0;
+                chosenHour[0] = hour24;
+            }
+            chosenMinute[0] = minuteVal;
+            updateTimeChips(hourChip, minuteChip, ampmChip, chosenHour[0], chosenMinute[0]);
+            clockView.setTime(chosenHour[0], chosenMinute[0], DateFormat.is24HourFormat(this));
+        };
 
         repeatOnce.setSelected(!reminder.repeatDaily);
         repeatDaily.setSelected(reminder.repeatDaily);
@@ -381,7 +434,46 @@ public class CalendarActivity extends AppCompatActivity {
             modeLabel.setText(mode == ReminderClockView.Mode.HOUR ? "Select Hour" : "Select Minute");
         });
 
+        toggleClock.setOnClickListener(v -> {
+            toggleClock.setBackgroundResource(R.drawable.bg_reminder_time_chip_selected);
+            toggleKeyboard.setBackgroundResource(R.drawable.bg_reminder_time_chip);
+            timeRow.setVisibility(View.VISIBLE);
+            clockView.setVisibility(View.VISIBLE);
+            pickTimeHint.setVisibility(View.VISIBLE);
+            modeLabel.setVisibility(View.VISIBLE);
+            keyboardRow.setVisibility(View.GONE);
+        });
+
+        toggleKeyboard.setOnClickListener(v -> {
+            toggleKeyboard.setBackgroundResource(R.drawable.bg_reminder_time_chip_selected);
+            toggleClock.setBackgroundResource(R.drawable.bg_reminder_time_chip);
+            timeRow.setVisibility(View.GONE);
+            clockView.setVisibility(View.GONE);
+            pickTimeHint.setVisibility(View.GONE);
+            modeLabel.setVisibility(View.GONE);
+            keyboardRow.setVisibility(View.VISIBLE);
+            syncInputsFromChosen.run();
+        });
+
+        keyboardAmPm.setOnClickListener(v -> {
+            if (is24) return;
+            keyboardAmPm.setText("AM".equalsIgnoreCase(keyboardAmPm.getText().toString()) ? "PM" : "AM");
+            syncChosenFromInputs.run();
+        });
+
+        hourInput.setOnFocusChangeListener((v, hasFocus) -> {
+            if (!hasFocus) syncChosenFromInputs.run();
+        });
+
+        minuteInput.setOnFocusChangeListener((v, hasFocus) -> {
+            if (!hasFocus) syncChosenFromInputs.run();
+        });
+
         timeRow.setOnClickListener(v -> {
+            if (keyboardRow.getVisibility() == View.VISIBLE) {
+                syncChosenFromInputs.run();
+                return;
+            }
             ReminderClockView.Mode mode = clockView.getMode();
             ReminderClockView.Mode next = (mode == ReminderClockView.Mode.HOUR)
                     ? ReminderClockView.Mode.MINUTE
@@ -426,6 +518,9 @@ public class CalendarActivity extends AppCompatActivity {
 
         cancelBtn.setOnClickListener(v -> dialog.dismiss());
         saveBtn.setOnClickListener(v -> {
+            if (keyboardRow.getVisibility() == View.VISIBLE) {
+                syncChosenFromInputs.run();
+            }
             Calendar when = Calendar.getInstance();
             String[] parts = reminder.dateKey.split("-");
             int y = Integer.parseInt(parts[0]);
@@ -490,6 +585,15 @@ public class CalendarActivity extends AppCompatActivity {
                 })
                 .setNegativeButton("Cancel", null)
                 .show();
+    }
+
+    private int safeParseInt(String text, int fallback) {
+        if (text == null || text.isEmpty()) return fallback;
+        try {
+            return Integer.parseInt(text);
+        } catch (NumberFormatException ignored) {
+            return fallback;
+        }
     }
 
     private Date parseDateKey(String dateKey) {
