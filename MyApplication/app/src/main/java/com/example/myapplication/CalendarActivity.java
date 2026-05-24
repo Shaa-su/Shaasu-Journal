@@ -1,6 +1,7 @@
 package com.example.myapplication;
 
 import android.content.Intent;
+import android.app.DatePickerDialog;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.view.LayoutInflater;
@@ -16,6 +17,7 @@ import android.widget.Toast;
 import android.text.InputType;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
+import android.graphics.Paint;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.view.ViewCompat;
@@ -71,10 +73,22 @@ public class CalendarActivity extends AppCompatActivity {
 
     private TextView tabStats;
     private TextView tabReminders;
+    private TextView tabGoals;
     private LinearLayout statsContainer;
     private LinearLayout remindersContainer;
     private LinearLayout remindersList;
     private TextView remindersEmptyText;
+    private LinearLayout goalsContainer;
+    private LinearLayout goalsDateTabs;
+    private LinearLayout goalsList;
+    private TextView goalsEmptyText;
+    private EditText goalsAddInput;
+    private View goalsAddButton;
+    private String selectedGoalsDateKey;
+
+    private static final int TAB_STATS = 0;
+    private static final int TAB_REMINDERS = 1;
+    private static final int TAB_GOALS = 2;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -114,10 +128,17 @@ public class CalendarActivity extends AppCompatActivity {
 
         tabStats = findViewById(R.id.tabStats);
         tabReminders = findViewById(R.id.tabReminders);
+        tabGoals = findViewById(R.id.tabGoals);
         statsContainer = findViewById(R.id.statsContainer);
         remindersContainer = findViewById(R.id.remindersContainer);
         remindersList = findViewById(R.id.remindersList);
         remindersEmptyText = findViewById(R.id.remindersEmptyText);
+        goalsContainer = findViewById(R.id.goalsContainer);
+        goalsDateTabs = findViewById(R.id.goalsDateTabs);
+        goalsList = findViewById(R.id.goalsList);
+        goalsEmptyText = findViewById(R.id.goalsEmptyText);
+        goalsAddInput = findViewById(R.id.goalsAddInput);
+        goalsAddButton = findViewById(R.id.goalsAddButton);
 
         ImageButton backButton = findViewById(R.id.backButton);
         ImageButton prevButton = findViewById(R.id.prevButton);
@@ -154,13 +175,20 @@ public class CalendarActivity extends AppCompatActivity {
         });
 
         if (tabStats != null) {
-            tabStats.setOnClickListener(v -> selectTab(false));
+            tabStats.setOnClickListener(v -> selectTab(TAB_STATS));
         }
         if (tabReminders != null) {
-            tabReminders.setOnClickListener(v -> selectTab(true));
+            tabReminders.setOnClickListener(v -> selectTab(TAB_REMINDERS));
+        }
+        if (tabGoals != null) {
+            tabGoals.setOnClickListener(v -> selectTab(TAB_GOALS));
         }
 
-        selectTab(false);
+        if (goalsAddButton != null) {
+            goalsAddButton.setOnClickListener(v -> submitNewGoalFromInput());
+        }
+
+        selectTab(TAB_STATS);
 
         // Defer heavy loading to the next frame to reduce navigation lag.
         if (recyclerDays != null) {
@@ -200,18 +228,25 @@ public class CalendarActivity extends AppCompatActivity {
 
         updateMoodStats(year, month0);
         updateRemindersList(year, month0);
+        updateGoalsList(year, month0);
     }
 
-    private void selectTab(boolean showReminders) {
-        if (tabStats != null) tabStats.setSelected(!showReminders);
-        if (tabReminders != null) tabReminders.setSelected(showReminders);
-        if (statsContainer != null) statsContainer.setVisibility(showReminders ? View.GONE : View.VISIBLE);
-        if (remindersContainer != null) remindersContainer.setVisibility(showReminders ? View.VISIBLE : View.GONE);
+    private void selectTab(int tab) {
+        if (tabStats != null) tabStats.setSelected(tab == TAB_STATS);
+        if (tabReminders != null) tabReminders.setSelected(tab == TAB_REMINDERS);
+        if (tabGoals != null) tabGoals.setSelected(tab == TAB_GOALS);
 
-        if (showReminders) {
-            int month0 = currentCalendar.get(Calendar.MONTH);
-            int year = currentCalendar.get(Calendar.YEAR);
+        if (statsContainer != null) statsContainer.setVisibility(tab == TAB_STATS ? View.VISIBLE : View.GONE);
+        if (remindersContainer != null) remindersContainer.setVisibility(tab == TAB_REMINDERS ? View.VISIBLE : View.GONE);
+        if (goalsContainer != null) goalsContainer.setVisibility(tab == TAB_GOALS ? View.VISIBLE : View.GONE);
+
+        int month0 = currentCalendar.get(Calendar.MONTH);
+        int year = currentCalendar.get(Calendar.YEAR);
+
+        if (tab == TAB_REMINDERS) {
             updateRemindersList(year, month0);
+        } else if (tab == TAB_GOALS) {
+            updateGoalsList(year, month0);
         }
     }
 
@@ -318,6 +353,385 @@ public class CalendarActivity extends AppCompatActivity {
 
             remindersList.addView(section);
         }
+    }
+
+    private void updateGoalsList(int year, int month0) {
+        if (goalsContainer == null || goalsDateTabs == null || goalsList == null) return;
+
+        goalsDateTabs.removeAllViews();
+        goalsList.removeAllViews();
+
+        SharedPreferences sharedPref = StoryStore.get(this);
+        Calendar cal = Calendar.getInstance();
+        cal.set(Calendar.YEAR, year);
+        cal.set(Calendar.MONTH, month0);
+        cal.set(Calendar.DAY_OF_MONTH, 1);
+        int daysInMonth = cal.getActualMaximum(Calendar.DAY_OF_MONTH);
+
+        Map<String, List<GoalEntry>> grouped = new LinkedHashMap<>();
+        for (int day = 1; day <= daysInMonth; day++) {
+            String dateKey = year + "-" + String.format("%02d", month0 + 1) + "-" + String.format("%02d", day);
+            String storyData = sharedPref.getString(dateKey, null);
+            if (storyData == null || storyData.isEmpty()) continue;
+            List<GoalEntry> goals = extractGoalsFromStory(storyData);
+            if (goals.isEmpty()) continue;
+            grouped.put(dateKey, goals);
+        }
+
+        List<String> dateKeys = new ArrayList<>(grouped.keySet());
+        Collections.sort(dateKeys);
+
+        if (goalsEmptyText != null) {
+            goalsEmptyText.setVisibility(dateKeys.isEmpty() ? View.VISIBLE : View.GONE);
+        }
+
+        if (selectedGoalsDateKey == null) {
+            selectedGoalsDateKey = getTodayDateKey();
+        }
+
+        List<String> displayKeys = new ArrayList<>(dateKeys);
+        String todayKey = getTodayDateKey();
+        if (!displayKeys.contains(todayKey)) {
+            displayKeys.add(todayKey);
+        }
+        if (selectedGoalsDateKey != null && !displayKeys.contains(selectedGoalsDateKey)) {
+            displayKeys.add(selectedGoalsDateKey);
+        }
+        Collections.sort(displayKeys);
+
+        if (goalsAddInput != null) goalsAddInput.setEnabled(true);
+        if (goalsAddButton != null) goalsAddButton.setEnabled(true);
+
+        renderGoalDateTabs(displayKeys, grouped);
+        showGoalsForDate(selectedGoalsDateKey, grouped.get(selectedGoalsDateKey));
+    }
+
+    private void renderGoalDateTabs(List<String> dateKeys, Map<String, List<GoalEntry>> grouped) {
+        if (goalsDateTabs == null) return;
+        goalsDateTabs.removeAllViews();
+
+        LayoutInflater inflater = LayoutInflater.from(this);
+        SimpleDateFormat dateFmt = new SimpleDateFormat("MMM d", Locale.US);
+
+        TextView pickChip = (TextView) inflater.inflate(android.R.layout.simple_list_item_1, goalsDateTabs, false);
+        pickChip.setText("Pick date");
+        pickChip.setTextSize(12f);
+        pickChip.setTextColor(getColor(R.color.menu_text_primary));
+        pickChip.setGravity(android.view.Gravity.CENTER);
+        pickChip.setPadding(dpToPx(14), dpToPx(8), dpToPx(14), dpToPx(8));
+        pickChip.setBackgroundResource(R.drawable.bg_reminder_time_chip);
+        LinearLayout.LayoutParams pickLp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+        );
+        pickLp.setMarginEnd(dpToPx(8));
+        pickChip.setLayoutParams(pickLp);
+        pickChip.setOnClickListener(v -> showGoalsDatePicker());
+        goalsDateTabs.addView(pickChip);
+
+        for (String dateKey : dateKeys) {
+            TextView chip = (TextView) inflater.inflate(android.R.layout.simple_list_item_1, goalsDateTabs, false);
+            Date d = parseDateKey(dateKey);
+            chip.setText(d != null ? dateFmt.format(d) : dateKey);
+            chip.setTextSize(12f);
+            chip.setTextColor(getColor(R.color.menu_text_primary));
+            chip.setGravity(android.view.Gravity.CENTER);
+            int padH = dpToPx(14);
+            int padV = dpToPx(8);
+            chip.setPadding(padH, padV, padH, padV);
+            boolean selected = dateKey.equals(selectedGoalsDateKey);
+            chip.setBackgroundResource(selected ? R.drawable.bg_reminder_time_chip_selected : R.drawable.bg_reminder_time_chip);
+
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+            );
+            lp.setMarginEnd(dpToPx(8));
+            chip.setLayoutParams(lp);
+
+            chip.setOnClickListener(v -> {
+                selectedGoalsDateKey = dateKey;
+                renderGoalDateTabs(dateKeys, grouped);
+                showGoalsForDate(dateKey, grouped.get(dateKey));
+            });
+
+            goalsDateTabs.addView(chip);
+        }
+    }
+
+    private void showGoalsForDate(String dateKey, List<GoalEntry> goals) {
+        if (goalsList == null) return;
+        goalsList.removeAllViews();
+        final List<GoalEntry> finalGoals = (goals != null) ? goals : new ArrayList<>();
+
+        LayoutInflater inflater = LayoutInflater.from(this);
+        for (GoalEntry entry : finalGoals) {
+            View row = inflater.inflate(R.layout.item_goal_row, goalsList, false);
+            View checkButton = row.findViewById(R.id.goalCheckButton);
+            View checkCircle = row.findViewById(R.id.goalCheckCircle);
+            android.widget.ImageView checkIcon = row.findViewById(R.id.goalCheckIcon);
+            TextView goalText = row.findViewById(R.id.goalText);
+            ImageButton deleteButton = row.findViewById(R.id.goalDeleteButton);
+
+            goalText.setText(entry.text);
+            applyGoalCompletedStyle(goalText, checkCircle, checkIcon, entry.completed);
+
+            if (checkButton != null) {
+                checkButton.setOnClickListener(v -> {
+                    entry.completed = !entry.completed;
+                    applyGoalCompletedStyle(goalText, checkCircle, checkIcon, entry.completed);
+                    saveGoalsForDate(dateKey, finalGoals);
+                });
+            }
+
+            if (goalText != null) {
+                goalText.setOnClickListener(v -> showEditGoalDialog(dateKey, entry, finalGoals));
+            }
+
+            if (deleteButton != null) {
+                deleteButton.setOnClickListener(v -> {
+                    finalGoals.remove(entry);
+                    saveGoalsForDate(dateKey, finalGoals);
+                    updateGoalsList(currentCalendar.get(Calendar.YEAR), currentCalendar.get(Calendar.MONTH));
+                });
+            }
+
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+            );
+            lp.topMargin = dpToPx(8);
+            row.setLayoutParams(lp);
+
+            goalsList.addView(row);
+        }
+    }
+
+    private void showEditGoalDialog(String dateKey, GoalEntry entry, List<GoalEntry> goals) {
+        if (entry == null) return;
+        EditText input = new EditText(this);
+        input.setText(entry.text);
+        input.setSelection(input.getText().length());
+
+        new AlertDialog.Builder(this)
+                .setTitle("Edit Goal")
+                .setView(input)
+                .setPositiveButton("Save", (d, w) -> {
+                    String txt = input.getText() != null ? input.getText().toString().trim() : "";
+                    if (txt.isEmpty()) return;
+                    entry.text = txt;
+                    saveGoalsForDate(dateKey, goals);
+                    showGoalsForDate(dateKey, goals);
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    private void submitNewGoalFromInput() {
+        if (goalsAddInput == null) return;
+        if (selectedGoalsDateKey == null) {
+            selectedGoalsDateKey = getTodayDateKey();
+        }
+        String text = goalsAddInput.getText() != null ? goalsAddInput.getText().toString().trim() : "";
+        if (text.isEmpty()) return;
+
+        List<GoalEntry> goals = getGoalsForDate(selectedGoalsDateKey);
+        goals.add(new GoalEntry(text, false));
+        saveGoalsForDate(selectedGoalsDateKey, goals);
+        goalsAddInput.setText("");
+        updateGoalsList(currentCalendar.get(Calendar.YEAR), currentCalendar.get(Calendar.MONTH));
+    }
+
+    private List<GoalEntry> getGoalsForDate(String dateKey) {
+        List<GoalEntry> goals = new ArrayList<>();
+        if (dateKey == null) return goals;
+        SharedPreferences sharedPref = StoryStore.get(this);
+        String storyData = sharedPref.getString(dateKey, null);
+        if (storyData == null || storyData.isEmpty()) return goals;
+        return extractGoalsFromStory(storyData);
+    }
+
+    private List<GoalEntry> extractGoalsFromStory(String storyData) {
+        List<GoalEntry> goals = new ArrayList<>();
+        StoryParts parts = parseStoryParts(storyData);
+        String goalsBlob = parts != null ? parts.goalsBlob : "";
+        if (goalsBlob == null || goalsBlob.trim().isEmpty()) return goals;
+
+        String[] items = goalsBlob.split("\\|\\|\\|");
+        for (String item : items) {
+            if (item == null || item.trim().isEmpty()) continue;
+            String[] partsGoal = item.split("\\|");
+            String text = partsGoal.length > 0 ? partsGoal[0] : "";
+            boolean completed = partsGoal.length > 1 && Boolean.parseBoolean(partsGoal[1]);
+            if (text.trim().isEmpty()) continue;
+            goals.add(new GoalEntry(text, completed));
+        }
+
+        return goals;
+    }
+
+    private void saveGoalsForDate(String dateKey, List<GoalEntry> goals) {
+        if (dateKey == null) return;
+        SharedPreferences sharedPref = StoryStore.get(this);
+        String storyData = sharedPref.getString(dateKey, null);
+        if (storyData == null) {
+            StoryParts fresh = new StoryParts();
+            fresh.title = "";
+            fresh.story = "";
+            fresh.goalsBlob = serializeGoals(goals);
+            String rebuilt = buildStoryData(fresh);
+            sharedPref.edit().putString(dateKey, rebuilt).apply();
+            return;
+        }
+
+        StoryParts parts = parseStoryParts(storyData);
+        if (parts == null) return;
+        parts.goalsBlob = serializeGoals(goals);
+
+        String rebuilt = buildStoryData(parts);
+        sharedPref.edit().putString(dateKey, rebuilt).apply();
+    }
+
+    private String serializeGoals(List<GoalEntry> goals) {
+        if (goals == null || goals.isEmpty()) return "";
+        StringBuilder out = new StringBuilder();
+        boolean first = true;
+        for (GoalEntry entry : goals) {
+            if (entry == null) continue;
+            String text = entry.text != null ? entry.text.trim() : "";
+            if (text.isEmpty()) continue;
+            if (!first) out.append("|||");
+            out.append(text).append("|").append(entry.completed);
+            first = false;
+        }
+        return out.toString();
+    }
+
+    private StoryParts parseStoryParts(String storyData) {
+        if (storyData == null) return null;
+        String working = storyData;
+
+        String wallpaperEncoded = "";
+        int wpIndex = working.indexOf(WALLPAPER_MARKER);
+        if (wpIndex >= 0) {
+            wallpaperEncoded = working.substring(wpIndex + WALLPAPER_MARKER.length());
+            working = working.substring(0, wpIndex);
+        }
+
+        String moodId = null;
+        int moodIndex = working.indexOf(MOOD_MARKER);
+        if (moodIndex >= 0) {
+            moodId = working.substring(moodIndex + MOOD_MARKER.length()).trim();
+            working = working.substring(0, moodIndex);
+        }
+
+        String title = "";
+        String story = "";
+        String goalsBlob = "";
+        int firstSep = working.indexOf("||");
+        if (firstSep < 0) {
+            title = working;
+        } else {
+            title = working.substring(0, firstSep);
+            int secondSep = working.indexOf("||", firstSep + 2);
+            if (secondSep < 0) {
+                story = working.substring(firstSep + 2);
+            } else {
+                story = working.substring(firstSep + 2, secondSep);
+                goalsBlob = working.substring(secondSep + 2);
+            }
+        }
+
+        StoryParts parts = new StoryParts();
+        parts.title = title != null ? title : "";
+        parts.story = story != null ? story : "";
+        parts.goalsBlob = goalsBlob != null ? goalsBlob : "";
+        parts.moodId = moodId;
+        parts.wallpaperEncoded = wallpaperEncoded;
+        return parts;
+    }
+
+    private String buildStoryData(StoryParts parts) {
+        String storyData = (parts.title != null ? parts.title : "")
+                + "||"
+                + (parts.story != null ? parts.story : "")
+                + "||"
+                + (parts.goalsBlob != null ? parts.goalsBlob : "");
+
+        if (parts.moodId != null && !parts.moodId.trim().isEmpty()) {
+            storyData += MOOD_MARKER + parts.moodId.trim();
+        }
+        if (parts.wallpaperEncoded != null && !parts.wallpaperEncoded.isEmpty()) {
+            storyData += WALLPAPER_MARKER + parts.wallpaperEncoded;
+        }
+        return storyData;
+    }
+
+    private void applyGoalCompletedStyle(TextView goalText, View checkCircle, android.widget.ImageView checkIcon, boolean completed) {
+        if (checkCircle != null) {
+            checkCircle.setBackgroundResource(completed ? R.drawable.bg_goal_check_checked : R.drawable.bg_goal_check_unchecked);
+        }
+        if (checkIcon != null) {
+            checkIcon.setVisibility(completed ? View.VISIBLE : View.GONE);
+        }
+        if (goalText != null) {
+            int color = getColor(completed ? R.color.menu_text_secondary : R.color.menu_text_primary);
+            goalText.setTextColor(color);
+            goalText.setAlpha(completed ? 0.8f : 1f);
+            int flags = goalText.getPaintFlags();
+            if (completed) {
+                goalText.setPaintFlags(flags | Paint.STRIKE_THRU_TEXT_FLAG);
+            } else {
+                goalText.setPaintFlags(flags & (~Paint.STRIKE_THRU_TEXT_FLAG));
+            }
+        }
+    }
+
+    private static class GoalEntry {
+        String text;
+        boolean completed;
+
+        GoalEntry(String text, boolean completed) {
+            this.text = text;
+            this.completed = completed;
+        }
+    }
+
+    private static class StoryParts {
+        String title;
+        String story;
+        String goalsBlob;
+        String moodId;
+        String wallpaperEncoded;
+    }
+
+    private String getTodayDateKey() {
+        Calendar today = Calendar.getInstance();
+        return today.get(Calendar.YEAR) + "-" + String.format(Locale.US, "%02d", today.get(Calendar.MONTH) + 1)
+                + "-" + String.format(Locale.US, "%02d", today.get(Calendar.DAY_OF_MONTH));
+    }
+
+    private void showGoalsDatePicker() {
+        Calendar base = Calendar.getInstance();
+        if (selectedGoalsDateKey != null) {
+            Date d = parseDateKey(selectedGoalsDateKey);
+            if (d != null) base.setTime(d);
+        }
+
+        DatePickerDialog dialog = new DatePickerDialog(this,
+                (view, year, month, dayOfMonth) -> {
+                    selectedGoalsDateKey = year + "-" + String.format(Locale.US, "%02d", month + 1)
+                            + "-" + String.format(Locale.US, "%02d", dayOfMonth);
+                    currentCalendar.set(Calendar.YEAR, year);
+                    currentCalendar.set(Calendar.MONTH, month);
+                    currentCalendar.set(Calendar.DAY_OF_MONTH, 1);
+                    updateCalendar();
+                    selectTab(TAB_GOALS);
+                },
+                base.get(Calendar.YEAR),
+                base.get(Calendar.MONTH),
+                base.get(Calendar.DAY_OF_MONTH));
+        dialog.show();
     }
 
     private void showEditReminderDialog(Reminder reminder) {
