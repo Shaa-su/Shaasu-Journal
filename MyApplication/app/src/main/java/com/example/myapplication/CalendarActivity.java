@@ -1,7 +1,6 @@
 package com.example.myapplication;
 
 import android.content.Intent;
-import android.app.DatePickerDialog;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.view.LayoutInflater;
@@ -712,25 +711,68 @@ public class CalendarActivity extends AppCompatActivity {
     }
 
     private void showGoalsDatePicker() {
-        Calendar base = Calendar.getInstance();
-        if (selectedGoalsDateKey != null) {
-            Date d = parseDateKey(selectedGoalsDateKey);
-            if (d != null) base.setTime(d);
+        View container = LayoutInflater.from(this).inflate(R.layout.dialog_goals_date_picker, null, false);
+        TextView monthText = container.findViewById(R.id.pickerMonthText);
+        TextView yearText = container.findViewById(R.id.pickerYearText);
+        ImageButton prevButton = container.findViewById(R.id.pickerPrevButton);
+        ImageButton nextButton = container.findViewById(R.id.pickerNextButton);
+        RecyclerView daysRecycler = container.findViewById(R.id.pickerRecyclerDays);
+
+        if (monthText == null || yearText == null || prevButton == null || nextButton == null || daysRecycler == null) {
+            return;
         }
 
-        DatePickerDialog dialog = new DatePickerDialog(this,
-                (view, year, month, dayOfMonth) -> {
-                    selectedGoalsDateKey = year + "-" + String.format(Locale.US, "%02d", month + 1)
-                            + "-" + String.format(Locale.US, "%02d", dayOfMonth);
-                    currentCalendar.set(Calendar.YEAR, year);
-                    currentCalendar.set(Calendar.MONTH, month);
-                    currentCalendar.set(Calendar.DAY_OF_MONTH, 1);
-                    updateCalendar();
-                    selectTab(TAB_GOALS);
-                },
-                base.get(Calendar.YEAR),
-                base.get(Calendar.MONTH),
-                base.get(Calendar.DAY_OF_MONTH));
+        Calendar pickerCal = Calendar.getInstance();
+        if (selectedGoalsDateKey != null) {
+            Date d = parseDateKey(selectedGoalsDateKey);
+            if (d != null) pickerCal.setTime(d);
+        }
+
+        daysRecycler.setLayoutManager(new GridLayoutManager(this, 7));
+        String[] months = {"January", "February", "March", "April", "May", "June",
+                "July", "August", "September", "October", "November", "December"};
+
+        HashSet<String> reminderKeys = ReminderStore.getReminderDateKeys(this);
+
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setView(container)
+                .create();
+
+        dialog.setOnShowListener(d -> {
+            if (dialog.getWindow() != null) {
+                dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+                dialog.getWindow().setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            }
+        });
+
+        Runnable refresh = () -> {
+            int year = pickerCal.get(Calendar.YEAR);
+            int month0 = pickerCal.get(Calendar.MONTH);
+            monthText.setText(months[month0]);
+            yearText.setText(String.valueOf(year));
+            List<DayCell> cells = buildPickerCells(year, month0, reminderKeys, selectedGoalsDateKey);
+            daysRecycler.setAdapter(new DaysAdapter(cells, cell -> {
+                selectedGoalsDateKey = cell.year + "-" + String.format(Locale.US, "%02d", cell.month0 + 1)
+                        + "-" + String.format(Locale.US, "%02d", cell.day);
+                currentCalendar.set(Calendar.YEAR, cell.year);
+                currentCalendar.set(Calendar.MONTH, cell.month0);
+                currentCalendar.set(Calendar.DAY_OF_MONTH, 1);
+                updateCalendar();
+                selectTab(TAB_GOALS);
+                dialog.dismiss();
+            }));
+        };
+
+        prevButton.setOnClickListener(v -> {
+            pickerCal.add(Calendar.MONTH, -1);
+            refresh.run();
+        });
+        nextButton.setOnClickListener(v -> {
+            pickerCal.add(Calendar.MONTH, 1);
+            refresh.run();
+        });
+
+        refresh.run();
         dialog.show();
     }
 
@@ -1278,6 +1320,81 @@ public class CalendarActivity extends AppCompatActivity {
         }
 
         return cells;
+    }
+
+    private List<DayCell> buildPickerCells(int year, int month0, HashSet<String> reminderKeys, String selectedKey) {
+        Calendar firstOfMonth = Calendar.getInstance();
+        firstOfMonth.set(Calendar.YEAR, year);
+        firstOfMonth.set(Calendar.MONTH, month0);
+        firstOfMonth.set(Calendar.DAY_OF_MONTH, 1);
+        firstOfMonth.set(Calendar.HOUR_OF_DAY, 0);
+        firstOfMonth.set(Calendar.MINUTE, 0);
+        firstOfMonth.set(Calendar.SECOND, 0);
+        firstOfMonth.set(Calendar.MILLISECOND, 0);
+
+        int offset = firstOfMonth.get(Calendar.DAY_OF_WEEK) - Calendar.SUNDAY;
+        if (offset < 0) offset += 7;
+
+        Calendar prevMonth = (Calendar) firstOfMonth.clone();
+        prevMonth.add(Calendar.MONTH, -1);
+        int daysInPrevMonth = prevMonth.getActualMaximum(Calendar.DAY_OF_MONTH);
+
+        int daysInMonth = firstOfMonth.getActualMaximum(Calendar.DAY_OF_MONTH);
+
+        SharedPreferences sharedPref = StoryStore.get(this);
+        Calendar today = Calendar.getInstance();
+        int todayY = today.get(Calendar.YEAR);
+        int todayM = today.get(Calendar.MONTH);
+        int todayD = today.get(Calendar.DAY_OF_MONTH);
+
+        List<DayCell> cells = new ArrayList<>(42);
+
+        for (int i = 0; i < offset; i++) {
+            int day = (daysInPrevMonth - offset + 1) + i;
+            int cellMonth0 = prevMonth.get(Calendar.MONTH);
+            int cellYear = prevMonth.get(Calendar.YEAR);
+            cells.add(makePickerCell(sharedPref, reminderKeys, selectedKey, todayY, todayM, todayD, cellYear, cellMonth0, day, false));
+        }
+
+        for (int day = 1; day <= daysInMonth; day++) {
+            cells.add(makePickerCell(sharedPref, reminderKeys, selectedKey, todayY, todayM, todayD, year, month0, day, true));
+        }
+
+        Calendar nextMonth = (Calendar) firstOfMonth.clone();
+        nextMonth.add(Calendar.MONTH, 1);
+        int nextMonth0 = nextMonth.get(Calendar.MONTH);
+        int nextYear = nextMonth.get(Calendar.YEAR);
+
+        int day = 1;
+        while (cells.size() < 42) {
+            cells.add(makePickerCell(sharedPref, reminderKeys, selectedKey, todayY, todayM, todayD, nextYear, nextMonth0, day, false));
+            day++;
+        }
+
+        return cells;
+    }
+
+    private DayCell makePickerCell(SharedPreferences sharedPref, HashSet<String> reminderKeys, String selectedKey,
+                                   int todayY, int todayM, int todayD,
+                                   int year, int month0, int day,
+                                   boolean inCurrentMonth) {
+        String dateKey = year + "-" + String.format(Locale.US, "%02d", month0 + 1) + "-" + String.format(Locale.US, "%02d", day);
+        boolean hasEntry = sharedPref.contains(dateKey);
+        boolean hasReminder = reminderKeys != null && reminderKeys.contains(dateKey);
+        boolean hasMood = false;
+        String moodEmoji = null;
+        if (hasEntry) {
+            String storyData = sharedPref.getString(dateKey, null);
+            String moodId = extractMoodId(storyData);
+            Mood mood = Mood.findById(moodId);
+            if (mood != null) {
+                hasMood = true;
+                moodEmoji = mood.emoji;
+            }
+        }
+        boolean isToday = (year == todayY && month0 == todayM && day == todayD);
+        boolean isSelected = selectedKey != null && selectedKey.equals(dateKey);
+        return new DayCell(year, month0, day, inCurrentMonth, isToday, hasEntry, hasReminder, hasMood, moodEmoji, isSelected);
     }
 
     private DayCell makeCell(SharedPreferences sharedPref, HashSet<String> reminderKeys,
