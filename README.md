@@ -37,6 +37,11 @@ A private, offline Android journaling app with mood tracking, goals, and rich st
 ```bash
 ./gradlew assembleDebug
 ```
-
+## Upcoming Features
+- 🗄️ Vault — a hidden section accessible via menu; tapping the Vault button prompts PIN or Biometric authentication to access stored passwords, account info, and private text/images separate from journal entries
+- 📅 Events — add past or upcoming events to the calendar with user notifications
+- 🌤️ Weather Log — view upcoming weather tied to calendar dates
+- ☁️ Dropbox Integration — one-click encrypted backup and restore; auto-save entries to Dropbox with a single recover button
+  
 ## License
 Private — all rights reserved.
