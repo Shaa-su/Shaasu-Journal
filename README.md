@@ -1,4 +1,4 @@
-# Shaasu Story 📖
+# Shaasu Journal 📖
 
 A private, offline Android journaling app with mood tracking, goals, and rich story entries.
 
