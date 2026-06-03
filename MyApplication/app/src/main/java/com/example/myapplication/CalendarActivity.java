@@ -231,7 +231,6 @@ public class CalendarActivity extends AppCompatActivity {
 
         updateMoodStats(year, month0);
         updateRemindersList(year, month0);
-        updateGoalsList(year, month0);
     }
 
     private void selectTab(int tab) {
@@ -1358,6 +1357,9 @@ public class CalendarActivity extends AppCompatActivity {
         if (requestCode == 1) {
             // Refresh calendar when returning from StoryDetailActivity
             updateCalendar();
+            int month0 = currentCalendar.get(Calendar.MONTH);
+            int year = currentCalendar.get(Calendar.YEAR);
+            updateGoalsList(year, month0);
         }
     }
 

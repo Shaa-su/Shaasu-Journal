@@ -360,24 +360,99 @@
 
             <FrameLayout
                 android:layout_width="match_parent"
-                android:layout_height="220dp"
+                android:layout_height="280dp"
                 android:layout_marginTop="8dp">
 
-                <ScrollView
-                    android:id="@+id/goalsScroll"
+                <LinearLayout
+                    android:id="@+id/goalsKanbanScroll"
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
-                    android:overScrollMode="never">
+                    android:baselineAligned="false"
+                    android:orientation="horizontal"
+                    android:paddingTop="6dp"
+                    android:paddingBottom="6dp">
 
+                    <!-- Column: Planning -->
                     <LinearLayout
-                        android:id="@+id/goalsContainer"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
+                        android:id="@+id/colOngoingContainer"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1"
+                        android:layout_marginEnd="4dp"
+                        android:background="@drawable/bg_menu_card_dark"
                         android:orientation="vertical"
-                        android:paddingTop="10dp"
-                        android:paddingBottom="10dp" />
+                        android:padding="6dp">
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginBottom="6dp"
+                            android:text="Planning"
+                            android:textColor="@color/menu_text_primary"
+                            android:textSize="11sp"
+                            android:textStyle="bold" />
+                        <LinearLayout
+                            android:id="@+id/goalsColOngoing"
+                            android:layout_width="match_parent"
+                            android:layout_height="0dp"
+                            android:layout_weight="1"
+                            android:minHeight="60dp"
+                            android:orientation="vertical" />
+                    </LinearLayout>
 
-                </ScrollView>
+                    <!-- Column: Ongoing -->
+                    <LinearLayout
+                        android:id="@+id/colWorkingContainer"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1"
+                        android:layout_marginEnd="4dp"
+                        android:background="@drawable/bg_menu_card_dark"
+                        android:orientation="vertical"
+                        android:padding="6dp">
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginBottom="6dp"
+                            android:text="Ongoing"
+                            android:textColor="@color/menu_teal"
+                            android:textSize="11sp"
+                            android:textStyle="bold" />
+                        <LinearLayout
+                            android:id="@+id/goalsColWorking"
+                            android:layout_width="match_parent"
+                            android:layout_height="0dp"
+                            android:layout_weight="1"
+                            android:minHeight="60dp"
+                            android:orientation="vertical" />
+                    </LinearLayout>
+
+                    <!-- Column: Completed -->
+                    <LinearLayout
+                        android:id="@+id/colDoneContainer"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1"
+                        android:background="@drawable/bg_menu_card_dark"
+                        android:orientation="vertical"
+                        android:padding="6dp">
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginBottom="6dp"
+                            android:text="Completed"
+                            android:textColor="@color/menu_text_secondary"
+                            android:textSize="11sp"
+                            android:textStyle="bold" />
+                        <LinearLayout
+                            android:id="@+id/goalsColDone"
+                            android:layout_width="match_parent"
+                            android:layout_height="0dp"
+                            android:layout_weight="1"
+                            android:minHeight="60dp"
+                            android:orientation="vertical" />
+                    </LinearLayout>
+
+                </LinearLayout>
 
                 <TextView
                     android:id="@+id/goalsEmptyText"

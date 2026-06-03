@@ -61,7 +61,9 @@ public class StoryDetailActivity extends AppCompatActivity {
     private TextView dateDisplayText;
     private EditText titleEditText;
     private EditText storyEditText;
-    private LinearLayout goalsContainer;
+    private LinearLayout goalsColOngoing;
+    private LinearLayout goalsColWorking;
+    private LinearLayout goalsColDone;
     private View goalsModal;
     private View goalsBackdrop;
     private View goalsSheet;
@@ -147,7 +149,9 @@ public class StoryDetailActivity extends AppCompatActivity {
         titleEditText = findViewById(R.id.titleEditText);
         storyEditText = findViewById(R.id.storyEditText);
         moodOptionsContainer = findViewById(R.id.moodOptionsContainer);
-        goalsContainer = findViewById(R.id.goalsContainer);
+        goalsColOngoing = findViewById(R.id.goalsColOngoing);
+        goalsColWorking = findViewById(R.id.goalsColWorking);
+        goalsColDone = findViewById(R.id.goalsColDone);
         goalsModal = findViewById(R.id.goalsModal);
         goalsBackdrop = findViewById(R.id.goalsBackdrop);
         goalsSheet = findViewById(R.id.goalsSheet);
@@ -237,7 +241,25 @@ public class StoryDetailActivity extends AppCompatActivity {
                 return false;
             });
         }
-        
+
+        // Set up Kanban drag-drop listeners
+        android.view.View.OnDragListener kanbanDrag = buildKanbanDragListener(goalItems);
+        if (goalsColOngoing != null) {
+            goalsColOngoing.setOnDragListener(kanbanDrag);
+            View ongoingCont = findViewById(R.id.colOngoingContainer);
+            if (ongoingCont != null) ongoingCont.setOnDragListener(kanbanDrag);
+        }
+        if (goalsColWorking != null) {
+            goalsColWorking.setOnDragListener(kanbanDrag);
+            View workingCont = findViewById(R.id.colWorkingContainer);
+            if (workingCont != null) workingCont.setOnDragListener(kanbanDrag);
+        }
+        if (goalsColDone != null) {
+            goalsColDone.setOnDragListener(kanbanDrag);
+            View doneCont = findViewById(R.id.colDoneContainer);
+            if (doneCont != null) doneCont.setOnDragListener(kanbanDrag);
+        }
+
         // Save button click listener
         saveButton.setOnClickListener(v -> {
             dismissInlineImageResizePopup();
@@ -983,8 +1005,10 @@ public class StoryDetailActivity extends AppCompatActivity {
     }
 
     private void updateGoalsEmptyState() {
-        if (goalsEmptyText == null || goalsContainer == null) return;
-        boolean empty = goalsContainer.getChildCount() == 0;
+        if (goalsEmptyText == null) return;
+        boolean empty = (goalsColOngoing == null || goalsColOngoing.getChildCount() == 0)
+                && (goalsColWorking == null || goalsColWorking.getChildCount() == 0)
+                && (goalsColDone == null || goalsColDone.getChildCount() == 0);
         goalsEmptyText.setVisibility(empty ? View.VISIBLE : View.GONE);
     }
 
@@ -1038,101 +1062,183 @@ public class StoryDetailActivity extends AppCompatActivity {
         goalTrackerText.setTextColor(textColor);
     }
 
+    private LinearLayout targetColumnForState(int state) {
+        if (state == 2) return goalsColDone;
+        if (state == 1) return goalsColWorking;
+        return goalsColOngoing;
+    }
+
+    // Build a shared drag-drop listener for Kanban columns
+    private android.view.View.OnDragListener buildKanbanDragListener(List<GoalItem> itemsRef) {
+        return (v, event) -> {
+            switch (event.getAction()) {
+                case android.view.DragEvent.ACTION_DRAG_STARTED:
+                    return true;
+                case android.view.DragEvent.ACTION_DRAG_ENTERED:
+                    v.setAlpha(0.6f);
+                    return true;
+                case android.view.DragEvent.ACTION_DRAG_EXITED:
+                    v.setAlpha(1f);
+                    return true;
+                case android.view.DragEvent.ACTION_DROP:
+                    v.setAlpha(1f);
+                    GoalItem dragged = (GoalItem) event.getLocalState();
+                    if (dragged != null) {
+                        int newState = 0;
+                        int vid = v.getId();
+                        android.view.ViewParent parent = v.getParent();
+                        if (vid == R.id.goalsColOngoing || vid == R.id.colOngoingContainer || parent == goalsColOngoing) newState = 0;
+                        else if (vid == R.id.goalsColWorking || vid == R.id.colWorkingContainer || parent == goalsColWorking) newState = 1;
+                        else if (vid == R.id.goalsColDone || vid == R.id.colDoneContainer || parent == goalsColDone) newState = 2;
+
+                        if (dragged.state != newState) {
+                            dragged.state = newState;
+                            refreshAllKanbanGoals();
+                            saveStory();
+                        }
+                    }
+                    return true;
+                case android.view.DragEvent.ACTION_DRAG_ENDED:
+                    v.setAlpha(1f);
+                    return true;
+            }
+            return false;
+        };
+    }
+
+    private void refreshAllKanbanGoals() {
+        // Clear all columns
+        goalsColOngoing.removeAllViews();
+        goalsColWorking.removeAllViews();
+        goalsColDone.removeAllViews();
+
+        // Sort within each column (no reordering needed)
+        for (GoalItem item : goalItems) {
+            LinearLayout targetCol = targetColumnForState(item.state);
+            addGoalRowToColumn(item, targetCol);
+        }
+        updateGoalsUi();
+    }
+
+    private void addGoalRowToColumn(GoalItem item, LinearLayout column) {
+        View row = item.row;
+        // Remove from any parent first
+        if (row.getParent() != null) {
+            ((ViewGroup) row.getParent()).removeView(row);
+        }
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+        );
+        lp.topMargin = dpToPx(8);
+        row.setLayoutParams(lp);
+        column.addView(row);
+    }
+
     private void addGoal(String goalText) {
         addGoal(goalText, 0); // 0 = Planning
     }
 
     private void addGoal(String goalText, int state) {
-        if (goalsContainer == null) return;
-
-        View row = LayoutInflater.from(this).inflate(R.layout.item_goal_row, goalsContainer, false);
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-        );
-        lp.topMargin = dpToPx(10);
-        row.setLayoutParams(lp);
-
+        View row = LayoutInflater.from(this).inflate(R.layout.item_goal_row, null, false);
         View checkButton = row.findViewById(R.id.goalCheckButton);
         View checkCircle = row.findViewById(R.id.goalCheckCircle);
         ImageView checkIcon = row.findViewById(R.id.goalCheckIcon);
         TextView goalTextView = row.findViewById(R.id.goalText);
 
+        // Hide checkboxes — Kanban uses drag-and-drop between columns instead
+        if (checkButton != null) checkButton.setVisibility(View.GONE);
+        if (checkCircle != null) checkCircle.setVisibility(View.GONE);
+        if (checkIcon != null) checkIcon.setVisibility(View.GONE);
+
         goalTextView.setText(goalText);
 
-        GoalItem item = new GoalItem(row, goalTextView, checkCircle, checkIcon);
+        GoalItem item = new GoalItem(row, goalTextView);
         item.state = state;
         goalItems.add(item);
-        goalsContainer.addView(row);
 
-        setGoalCompleted(item, state == 2);
-
-        if (checkButton != null) {
-            checkButton.setOnClickListener(v -> {
-                setGoalCompleted(item, item.state != 2);
-                updateGoalsUi();
-            });
-        }
-
-        goalTextView.setOnClickListener(v -> showEditGoalDialog(item));
-
-        updateGoalsUi();
-    }
-
-    private void setGoalCompleted(GoalItem item, boolean completed) {
-        if (item == null) return;
-        item.state = completed ? 2 : 0;
-
-        if (item.checkCircle != null) {
-            item.checkCircle.setBackgroundResource(completed ? R.drawable.bg_goal_check_checked : R.drawable.bg_goal_check_unchecked);
-        }
-        if (item.checkIcon != null) {
-            item.checkIcon.setVisibility(completed ? View.VISIBLE : View.GONE);
-        }
+        // Apply column-appropriate styling
         if (item.textView != null) {
             int color = androidx.core.content.ContextCompat.getColor(this,
-                    completed ? R.color.menu_text_secondary : R.color.menu_text_primary);
+                    state == 2 ? R.color.menu_text_secondary : R.color.menu_text_primary);
             item.textView.setTextColor(color);
-            item.textView.setAlpha(completed ? 0.8f : 1f);
-
+            item.textView.setAlpha(state == 2 ? 0.8f : 1f);
             int flags = item.textView.getPaintFlags();
-            if (completed) {
+            if (state == 2) {
                 item.textView.setPaintFlags(flags | Paint.STRIKE_THRU_TEXT_FLAG);
             } else {
                 item.textView.setPaintFlags(flags & (~Paint.STRIKE_THRU_TEXT_FLAG));
             }
         }
+
+        // Tap text to edit
+        goalTextView.setOnClickListener(v -> showEditGoalDialog(item));
+
+        // Drag starter
+        android.view.View.OnLongClickListener dragStarter = v -> {
+            android.content.ClipData data = android.content.ClipData.newPlainText("goal", "goal");
+            View.DragShadowBuilder shadowBuilder = new View.DragShadowBuilder(row);
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
+                row.startDragAndDrop(data, shadowBuilder, item, 0);
+            } else {
+                row.startDrag(data, shadowBuilder, item, 0);
+            }
+            return true;
+        };
+        row.setOnLongClickListener(dragStarter);
+        goalTextView.setOnLongClickListener(dragStarter);
+
+        // Add to the correct column
+        LinearLayout targetCol = targetColumnForState(item.state);
+        addGoalRowToColumn(item, targetCol);
+
+        updateGoalsUi();
     }
 
     private void showEditGoalDialog(GoalItem item) {
         if (item == null) return;
 
-        android.content.Context themed = new android.view.ContextThemeWrapper(this, R.style.ThemeOverlay_App_DarkDialog);
-        EditText input = new EditText(themed);
+        View container = LayoutInflater.from(this).inflate(R.layout.dialog_edit_goal, null, false);
+        EditText input = container.findViewById(R.id.editGoalInput);
+        TextView saveBtn = container.findViewById(R.id.editGoalSave);
+        TextView cancelBtn = container.findViewById(R.id.editGoalCancel);
+        TextView deleteBtn = container.findViewById(R.id.editGoalDelete);
+
+        if (input == null || saveBtn == null || cancelBtn == null || deleteBtn == null) return;
+
         input.setText(item.textView.getText());
         input.setSelection(input.getText().length());
-        input.setTextColor(getColor(R.color.menu_text_primary));
-        input.setHintTextColor(getColor(R.color.menu_text_secondary));
-        input.setBackgroundTintList(android.content.res.ColorStateList.valueOf(getColor(R.color.menu_teal)));
 
-        new AlertDialog.Builder(themed)
-                .setTitle("Edit Goal")
-                .setView(input)
-                .setPositiveButton("Save", (d, w) -> {
-                    String txt = input.getText() != null ? input.getText().toString().trim() : "";
-                    if (txt.isEmpty()) return;
-                    item.textView.setText(txt);
-                    saveStory();
-                    updateGoalsUi();
-                })
-                .setNeutralButton("Delete", (d, w) -> {
-                    goalsContainer.removeView(item.row);
-                    goalItems.remove(item);
-                    updateGoalsUi();
-                    saveStory();
-                })
-                .setNegativeButton("Cancel", null)
-                .show();
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setView(container)
+                .create();
+
+        dialog.setOnShowListener(d -> {
+            if (dialog.getWindow() != null) {
+                dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+                dialog.getWindow().setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            }
+        });
+
+        saveBtn.setOnClickListener(v -> {
+            String txt = input.getText() != null ? input.getText().toString().trim() : "";
+            if (txt.isEmpty()) return;
+            item.textView.setText(txt);
+            saveStory();
+            refreshAllKanbanGoals();
+            dialog.dismiss();
+        });
+
+        cancelBtn.setOnClickListener(v -> dialog.dismiss());
+
+        deleteBtn.setOnClickListener(v -> {
+            goalItems.remove(item);
+            refreshAllKanbanGoals();
+            saveStory();
+            dialog.dismiss();
+        });
+
+        dialog.show();
     }
 
     private void openImagePicker() {
@@ -1680,15 +1786,11 @@ public class StoryDetailActivity extends AppCompatActivity {
     private static class GoalItem {
         final View row;
         final TextView textView;
-        final View checkCircle;
-        final ImageView checkIcon;
         int state;
 
-        GoalItem(View row, TextView textView, View checkCircle, ImageView checkIcon) {
+        GoalItem(View row, TextView textView) {
             this.row = row;
             this.textView = textView;
-            this.checkCircle = checkCircle;
-            this.checkIcon = checkIcon;
         }
     }
 }
