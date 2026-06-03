@@ -1057,11 +1057,10 @@ public class StoryDetailActivity extends AppCompatActivity {
         View checkCircle = row.findViewById(R.id.goalCheckCircle);
         ImageView checkIcon = row.findViewById(R.id.goalCheckIcon);
         TextView goalTextView = row.findViewById(R.id.goalText);
-        ImageButton deleteButton = row.findViewById(R.id.goalDeleteButton);
 
         goalTextView.setText(goalText);
 
-        GoalItem item = new GoalItem(row, goalTextView, checkCircle, checkIcon, deleteButton);
+        GoalItem item = new GoalItem(row, goalTextView, checkCircle, checkIcon);
         item.state = state;
         goalItems.add(item);
         goalsContainer.addView(row);
@@ -1075,13 +1074,7 @@ public class StoryDetailActivity extends AppCompatActivity {
             });
         }
 
-        if (deleteButton != null) {
-            deleteButton.setOnClickListener(v -> {
-                goalsContainer.removeView(row);
-                goalItems.remove(item);
-                updateGoalsUi();
-            });
-        }
+        goalTextView.setOnClickListener(v -> showEditGoalDialog(item));
 
         updateGoalsUi();
     }
@@ -1110,7 +1103,38 @@ public class StoryDetailActivity extends AppCompatActivity {
             }
         }
     }
-    
+
+    private void showEditGoalDialog(GoalItem item) {
+        if (item == null) return;
+
+        android.content.Context themed = new android.view.ContextThemeWrapper(this, R.style.ThemeOverlay_App_DarkDialog);
+        EditText input = new EditText(themed);
+        input.setText(item.textView.getText());
+        input.setSelection(input.getText().length());
+        input.setTextColor(getColor(R.color.menu_text_primary));
+        input.setHintTextColor(getColor(R.color.menu_text_secondary));
+        input.setBackgroundTintList(android.content.res.ColorStateList.valueOf(getColor(R.color.menu_teal)));
+
+        new AlertDialog.Builder(themed)
+                .setTitle("Edit Goal")
+                .setView(input)
+                .setPositiveButton("Save", (d, w) -> {
+                    String txt = input.getText() != null ? input.getText().toString().trim() : "";
+                    if (txt.isEmpty()) return;
+                    item.textView.setText(txt);
+                    saveStory();
+                    updateGoalsUi();
+                })
+                .setNeutralButton("Delete", (d, w) -> {
+                    goalsContainer.removeView(item.row);
+                    goalItems.remove(item);
+                    updateGoalsUi();
+                    saveStory();
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
     private void openImagePicker() {
         dismissInlineImageResizePopup();
         if (customFab != null) customFab.collapseImmediately();
@@ -1658,15 +1682,13 @@ public class StoryDetailActivity extends AppCompatActivity {
         final TextView textView;
         final View checkCircle;
         final ImageView checkIcon;
-        final ImageButton deleteButton;
         int state;
 
-        GoalItem(View row, TextView textView, View checkCircle, ImageView checkIcon, ImageButton deleteButton) {
+        GoalItem(View row, TextView textView, View checkCircle, ImageView checkIcon) {
             this.row = row;
             this.textView = textView;
             this.checkCircle = checkCircle;
             this.checkIcon = checkIcon;
-            this.deleteButton = deleteButton;
         }
     }
 }

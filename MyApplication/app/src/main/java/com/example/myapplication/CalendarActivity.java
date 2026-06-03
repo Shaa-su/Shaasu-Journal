@@ -520,7 +520,6 @@ public class CalendarActivity extends AppCompatActivity {
             if (checkIcon != null) checkIcon.setVisibility(View.GONE);
 
             TextView goalText = row.findViewById(R.id.goalText);
-            ImageButton deleteButton = row.findViewById(R.id.goalDeleteButton);
 
             goalText.setText(entry.text);
 
@@ -550,14 +549,6 @@ public class CalendarActivity extends AppCompatActivity {
             if (goalText != null) {
                 goalText.setOnClickListener(v -> showEditGoalDialog(dateKey, entry, finalGoals));
                 goalText.setOnLongClickListener(dragStarter); // Prevent text from swallowing the long press
-            }
-
-            if (deleteButton != null) {
-                deleteButton.setOnClickListener(v -> {
-                    finalGoals.remove(entry);
-                    saveGoalsForDate(dateKey, finalGoals);
-                    updateGoalsList(currentCalendar.get(Calendar.YEAR), currentCalendar.get(Calendar.MONTH));
-                });
             }
 
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
@@ -593,8 +584,9 @@ public class CalendarActivity extends AppCompatActivity {
         EditText input = container.findViewById(R.id.editGoalInput);
         TextView saveBtn = container.findViewById(R.id.editGoalSave);
         TextView cancelBtn = container.findViewById(R.id.editGoalCancel);
+        TextView deleteBtn = container.findViewById(R.id.editGoalDelete);
 
-        if (input == null || saveBtn == null || cancelBtn == null) return;
+        if (input == null || saveBtn == null || cancelBtn == null || deleteBtn == null) return;
 
         input.setText(entry.text);
         input.setSelection(input.getText().length());
@@ -620,6 +612,13 @@ public class CalendarActivity extends AppCompatActivity {
         });
 
         cancelBtn.setOnClickListener(v -> dialog.dismiss());
+
+        deleteBtn.setOnClickListener(v -> {
+            goals.remove(entry);
+            saveGoalsForDate(dateKey, goals);
+            updateGoalsList(currentCalendar.get(Calendar.YEAR), currentCalendar.get(Calendar.MONTH));
+            dialog.dismiss();
+        });
 
         dialog.show();
     }

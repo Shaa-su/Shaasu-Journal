@@ -41,26 +41,13 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginStart="12dp"
+        android:layout_marginEnd="12dp"
         android:ellipsize="end"
         android:maxLines="1"
         android:text="Goal"
         android:textColor="@color/menu_text_primary"
         android:textSize="14sp"
         app:layout_constraintStart_toEndOf="@+id/goalCheckButton"
-        app:layout_constraintEnd_toStartOf="@+id/goalDeleteButton"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintBottom_toBottomOf="parent" />
-
-    <ImageButton
-        android:id="@+id/goalDeleteButton"
-        android:layout_width="28dp"
-        android:layout_height="28dp"
-        android:background="@drawable/bg_goals_icon_button"
-        android:contentDescription="Delete"
-        android:src="@drawable/ic_trash_simple"
-        android:scaleType="center"
-        android:padding="4dp"
-        android:tint="@android:color/holo_red_light"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintBottom_toBottomOf="parent" />
