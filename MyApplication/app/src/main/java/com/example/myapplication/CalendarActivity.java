@@ -588,22 +588,40 @@ public class CalendarActivity extends AppCompatActivity {
 
     private void showEditGoalDialog(String dateKey, GoalEntry entry, List<GoalEntry> goals) {
         if (entry == null) return;
-        EditText input = new EditText(this);
+
+        View container = LayoutInflater.from(this).inflate(R.layout.dialog_edit_goal, null, false);
+        EditText input = container.findViewById(R.id.editGoalInput);
+        TextView saveBtn = container.findViewById(R.id.editGoalSave);
+        TextView cancelBtn = container.findViewById(R.id.editGoalCancel);
+
+        if (input == null || saveBtn == null || cancelBtn == null) return;
+
         input.setText(entry.text);
         input.setSelection(input.getText().length());
 
-        new AlertDialog.Builder(this)
-                .setTitle("Edit Goal")
-                .setView(input)
-                .setPositiveButton("Save", (d, w) -> {
-                    String txt = input.getText() != null ? input.getText().toString().trim() : "";
-                    if (txt.isEmpty()) return;
-                    entry.text = txt;
-                    saveGoalsForDate(dateKey, goals);
-                    showGoalsForDate(dateKey, goals);
-                })
-                .setNegativeButton("Cancel", null)
-                .show();
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setView(container)
+                .create();
+
+        dialog.setOnShowListener(d -> {
+            if (dialog.getWindow() != null) {
+                dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+                dialog.getWindow().setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            }
+        });
+
+        saveBtn.setOnClickListener(v -> {
+            String txt = input.getText() != null ? input.getText().toString().trim() : "";
+            if (txt.isEmpty()) return;
+            entry.text = txt;
+            saveGoalsForDate(dateKey, goals);
+            showGoalsForDate(dateKey, goals);
+            dialog.dismiss();
+        });
+
+        cancelBtn.setOnClickListener(v -> dialog.dismiss());
+
+        dialog.show();
     }
 
     private void submitNewGoalFromInput() {
@@ -1089,11 +1107,15 @@ public class CalendarActivity extends AppCompatActivity {
     }
 
     private void showNumberInput(String title, int min, int max, int current, NumberInputCallback cb) {
-        EditText input = new EditText(this);
+        android.content.Context themed = new android.view.ContextThemeWrapper(this, R.style.ThemeOverlay_App_DarkDialog);
+        EditText input = new EditText(themed);
         input.setInputType(InputType.TYPE_CLASS_NUMBER);
         input.setHint(String.valueOf(current));
+        input.setTextColor(getColor(R.color.menu_text_primary));
+        input.setHintTextColor(getColor(R.color.menu_text_secondary));
+        input.setBackgroundTintList(android.content.res.ColorStateList.valueOf(getColor(R.color.menu_teal)));
 
-        new AlertDialog.Builder(this)
+        new AlertDialog.Builder(themed)
                 .setTitle(title)
                 .setView(input)
                 .setPositiveButton("OK", (d, w) -> {

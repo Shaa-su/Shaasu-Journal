@@ -13,4 +13,22 @@
         <item name="android:statusBarColor">?attr/colorPrimaryVariant</item>
         <!-- Customize your theme here. -->
     </style>
+
+    <!-- Dark-themed dialog overlay to match the app's menu_bg + teal accent -->
+    <style name="ThemeOverlay.App.DarkDialog" parent="ThemeOverlay.MaterialComponents.Dialog">
+        <item name="android:windowBackground">@color/menu_bg</item>
+        <item name="colorOnSurface">@color/menu_text_primary</item>
+        <item name="colorSurface">@color/menu_surface</item>
+        <item name="colorPrimary">@color/menu_teal</item>
+        <item name="colorOnPrimary">@color/black</item>
+        <item name="colorSecondary">@color/menu_teal</item>
+        <item name="colorOnSecondary">@color/black</item>
+        <item name="android:alertDialogTheme">@style/ThemeOverlay.App.DarkDialog</item>
+        <item name="alertDialogTheme">@style/ThemeOverlay.App.DarkDialog</item>
+        <item name="materialAlertDialogBodyTextStyle">@style/TextAppearance.App.DarkDialogBody</item>
+    </style>
+
+    <style name="TextAppearance.App.DarkDialogBody" parent="TextAppearance.MaterialComponents.Body1">
+        <item name="android:textColor">@color/menu_text_primary</item>
+    </style>
 </resources>

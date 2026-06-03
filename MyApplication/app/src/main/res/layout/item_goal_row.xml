@@ -53,12 +53,13 @@
 
     <ImageButton
         android:id="@+id/goalDeleteButton"
-        android:layout_width="34dp"
-        android:layout_height="34dp"
+        android:layout_width="28dp"
+        android:layout_height="28dp"
         android:background="@drawable/bg_goals_icon_button"
         android:contentDescription="Delete"
         android:src="@drawable/ic_trash_simple"
         android:scaleType="center"
+        android:padding="4dp"
         android:tint="@android:color/holo_red_light"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="parent"
