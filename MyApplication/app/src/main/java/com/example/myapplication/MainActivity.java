@@ -70,6 +70,16 @@ public class MainActivity extends AppCompatActivity {
         if (importCard != null) {
             importCard.setOnClickListener(v -> handleImportData());
         }
+
+        View eventCard = findViewById(R.id.eventButton);
+        if (eventCard != null) {
+            eventCard.setOnClickListener(v -> handleEvent());
+        }
+
+        View vaultCard = findViewById(R.id.vaultButton);
+        if (vaultCard != null) {
+            vaultCard.setOnClickListener(v -> handleVault());
+        }
     }
     
     private void handleViewStories() {
@@ -128,6 +138,16 @@ public class MainActivity extends AppCompatActivity {
         });
     }
     
+    private void handleEvent() {
+        // TODO: Implement event logic
+        Toast.makeText(this, "Event coming soon", Toast.LENGTH_SHORT).show();
+    }
+
+    private void handleVault() {
+        // TODO: Implement vault logic
+        Toast.makeText(this, "Vault coming soon", Toast.LENGTH_SHORT).show();
+    }
+
     private void handleImportData() {
         // Open file picker to select JSON file
         Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
