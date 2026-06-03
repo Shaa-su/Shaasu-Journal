@@ -1,0 +1,311 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="@drawable/bg_dialog_rounded"
+    android:padding="24dp"
+    android:maxHeight="620dp">
+
+    <!-- Header -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="New Event"
+            android:textColor="@color/menu_text_primary"
+            android:textSize="20sp"
+            android:textStyle="bold" />
+
+        <ImageButton
+            android:id="@+id/newEventClose"
+            android:layout_width="34dp"
+            android:layout_height="34dp"
+            android:background="@drawable/bg_event_close_button"
+            android:contentDescription="Close"
+            android:scaleType="center"
+            android:src="@android:drawable/ic_menu_close_clear_cancel"
+            android:tint="@color/menu_text_primary" />
+    </LinearLayout>
+
+    <!-- Event Title Input -->
+    <EditText
+        android:id="@+id/eventTitleInput"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:layout_marginTop="18dp"
+        android:background="@drawable/bg_event_input"
+        android:paddingStart="14dp"
+        android:paddingEnd="14dp"
+        android:textSize="14sp"
+        android:textColor="@color/menu_text_primary"
+        android:textColorHint="@color/menu_text_secondary"
+        android:hint="Event title (e.g. Mom's Birthday)"
+        android:inputType="text"
+        android:maxLines="1" />
+
+    <!-- Note Input -->
+    <EditText
+        android:id="@+id/eventNoteInput"
+        android:layout_width="match_parent"
+        android:layout_height="80dp"
+        android:layout_marginTop="10dp"
+        android:background="@drawable/bg_event_input"
+        android:paddingStart="14dp"
+        android:paddingEnd="14dp"
+        android:paddingTop="12dp"
+        android:paddingBottom="12dp"
+        android:textSize="14sp"
+        android:textColor="@color/menu_text_primary"
+        android:textColorHint="@color/menu_text_secondary"
+        android:hint="Note (optional)"
+        android:inputType="textMultiLine"
+        android:gravity="top" />
+
+    <!-- REPEAT Section -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="18dp"
+        android:text="REPEAT"
+        android:textColor="@color/menu_text_secondary"
+        android:textSize="11sp"
+        android:textStyle="bold"
+        android:letterSpacing="0.08" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="38dp"
+        android:layout_marginTop="8dp"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/repeatYearly"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:layout_marginEnd="6dp"
+            android:gravity="center"
+            android:background="@drawable/bg_event_segment_selected"
+            android:drawablePadding="6dp"
+            android:drawableStart="@android:drawable/ic_menu_agenda"
+            android:text="Every Year"
+            android:textColor="@color/menu_bg"
+            android:textSize="13sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/repeatOnce"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:background="@drawable/bg_event_segment_unselected"
+            android:drawablePadding="6dp"
+            android:drawableStart="@android:drawable/ic_menu_my_calendar"
+            android:text="Once"
+            android:textColor="@color/menu_text_secondary"
+            android:textSize="13sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:text="Great for birthdays, anniversaries — repeats annually"
+        android:textColor="@color/menu_text_secondary"
+        android:textSize="11sp" />
+
+    <!-- DATE Section -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="18dp"
+        android:text="DATE"
+        android:textColor="@color/menu_text_secondary"
+        android:textSize="11sp"
+        android:textStyle="bold"
+        android:letterSpacing="0.08" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="44dp"
+        android:layout_marginTop="8dp"
+        android:orientation="horizontal">
+
+        <!-- Month Selector -->
+        <TextView
+            android:id="@+id/monthSelector"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="2"
+            android:layout_marginEnd="8dp"
+            android:gravity="center_vertical|start"
+            android:paddingStart="14dp"
+            android:paddingEnd="10dp"
+            android:background="@drawable/bg_event_input"
+            android:drawableEnd="@android:drawable/arrow_down_float"
+            android:text="June"
+            android:textColor="@color/menu_text_primary"
+            android:textSize="14sp"
+            android:clickable="true"
+            android:focusable="true" />
+
+        <!-- Day Selector -->
+        <TextView
+            android:id="@+id/daySelector"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:gravity="center_vertical|start"
+            android:paddingStart="14dp"
+            android:paddingEnd="10dp"
+            android:background="@drawable/bg_event_input"
+            android:drawableEnd="@android:drawable/arrow_down_float"
+            android:text="3"
+            android:textColor="@color/menu_text_primary"
+            android:textSize="14sp"
+            android:clickable="true"
+            android:focusable="true" />
+    </LinearLayout>
+
+    <!-- BACKGROUND PHOTO Section -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="18dp"
+        android:text="BACKGROUND PHOTO"
+        android:textColor="@color/menu_text_secondary"
+        android:textSize="11sp"
+        android:textStyle="bold"
+        android:letterSpacing="0.08" />
+
+    <FrameLayout
+        android:id="@+id/backgroundSelector"
+        android:layout_width="match_parent"
+        android:layout_height="90dp"
+        android:layout_marginTop="8dp"
+        android:background="@drawable/bg_event_input"
+        android:foreground="?attr/selectableItemBackground"
+        android:clickable="true"
+        android:focusable="true">
+
+        <ImageView
+            android:id="@+id/backgroundImage"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:scaleType="centerCrop"
+            android:src="@android:drawable/ic_menu_gallery"
+            android:tint="#22FFFFFF"
+            android:contentDescription="Background" />
+
+        <LinearLayout
+            android:id="@+id/uploadOverlay"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:gravity="center"
+            android:orientation="vertical">
+
+            <ImageView
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:src="@android:drawable/ic_menu_gallery"
+                android:tint="@color/menu_text_primary" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="Upload Background"
+                android:textColor="@color/menu_text_primary"
+                android:textSize="12sp" />
+        </LinearLayout>
+    </FrameLayout>
+
+    <!-- Notify on the day -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:layout_marginTop="18dp"
+        android:gravity="center_vertical"
+        android:background="@drawable/bg_event_input"
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp"
+        android:orientation="horizontal">
+
+        <LinearLayout
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:gravity="center"
+            android:background="@drawable/bg_event_circle_orange">
+
+            <ImageView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:src="@android:drawable/ic_lock_idle_alarm"
+                android:tint="@color/event_accent" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="10dp"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Notify on the day"
+                android:textColor="@color/menu_text_primary"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Get an alert when the event arrives"
+                android:textColor="@color/menu_text_secondary"
+                android:textSize="11sp" />
+        </LinearLayout>
+
+        <!-- Toggle switch -->
+        <LinearLayout
+            android:id="@+id/notifyToggle"
+            android:layout_width="44dp"
+            android:layout_height="24dp"
+            android:background="@drawable/bg_event_toggle_track"
+            android:gravity="end"
+            android:clickable="true"
+            android:focusable="true"
+            android:padding="2dp">
+
+            <View
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:background="@drawable/bg_event_toggle_thumb" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- Save Event Button -->
+    <TextView
+        android:id="@+id/saveEventButton"
+        android:layout_width="match_parent"
+        android:layout_height="50dp"
+        android:layout_marginTop="20dp"
+        android:gravity="center"
+        android:background="@drawable/bg_event_pill_orange"
+        android:text="Save Event"
+        android:textColor="@color/menu_bg"
+        android:textSize="15sp"
+        android:textStyle="bold" />
+
+</LinearLayout>

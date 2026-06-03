@@ -139,8 +139,8 @@ public class MainActivity extends AppCompatActivity {
     }
     
     private void handleEvent() {
-        // TODO: Implement event logic
-        Toast.makeText(this, "Event coming soon", Toast.LENGTH_SHORT).show();
+        Intent intent = new Intent(MainActivity.this, EventsActivity.class);
+        startActivity(intent);
     }
 
     private void handleVault() {

@@ -21,4 +21,9 @@
     <color name="fab_image">#FF8B5CF6</color>
     <color name="fab_wallpaper">#FFF59E0B</color>
     <color name="fab_goals">#FF22C55E</color>
+
+    <!-- Events (cyan/teal accent) -->
+    <color name="event_accent">@color/menu_teal</color>
+    <color name="event_accent_dark">@color/menu_teal_icon_bg</color>
+    <color name="event_accent_light">#FF40CFC0</color>
 </resources>

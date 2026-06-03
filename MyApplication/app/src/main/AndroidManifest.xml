@@ -46,6 +46,10 @@
             android:name=".StoriesListActivity"
             android:exported="true" />
 
+        <activity
+            android:name=".EventsActivity"
+            android:exported="true" />
+
         <receiver
             android:name=".ReminderReceiver"
             android:exported="false" />
