@@ -79,7 +79,9 @@ public class CalendarActivity extends AppCompatActivity {
     private TextView remindersEmptyText;
     private LinearLayout goalsContainer;
     private LinearLayout goalsDateTabs;
-    private LinearLayout goalsList;
+    private LinearLayout goalsColOngoing;
+    private LinearLayout goalsColWorking;
+    private LinearLayout goalsColDone;
     private TextView goalsEmptyText;
     private EditText goalsAddInput;
     private View goalsAddButton;
@@ -134,7 +136,9 @@ public class CalendarActivity extends AppCompatActivity {
         remindersEmptyText = findViewById(R.id.remindersEmptyText);
         goalsContainer = findViewById(R.id.goalsContainer);
         goalsDateTabs = findViewById(R.id.goalsDateTabs);
-        goalsList = findViewById(R.id.goalsList);
+        goalsColOngoing = findViewById(R.id.goalsColOngoing);
+        goalsColWorking = findViewById(R.id.goalsColWorking);
+        goalsColDone = findViewById(R.id.goalsColDone);
         goalsEmptyText = findViewById(R.id.goalsEmptyText);
         goalsAddInput = findViewById(R.id.goalsAddInput);
         goalsAddButton = findViewById(R.id.goalsAddButton);
@@ -355,10 +359,12 @@ public class CalendarActivity extends AppCompatActivity {
     }
 
     private void updateGoalsList(int year, int month0) {
-        if (goalsContainer == null || goalsDateTabs == null || goalsList == null) return;
+        if (goalsContainer == null || goalsDateTabs == null || goalsColOngoing == null) return;
 
         goalsDateTabs.removeAllViews();
-        goalsList.removeAllViews();
+        goalsColOngoing.removeAllViews();
+        goalsColWorking.removeAllViews();
+        goalsColDone.removeAllViews();
 
         SharedPreferences sharedPref = StoryStore.get(this);
         Calendar cal = Calendar.getInstance();
@@ -459,32 +465,91 @@ public class CalendarActivity extends AppCompatActivity {
     }
 
     private void showGoalsForDate(String dateKey, List<GoalEntry> goals) {
-        if (goalsList == null) return;
-        goalsList.removeAllViews();
+        if (goalsColOngoing == null) return;
+        goalsColOngoing.removeAllViews();
+        goalsColWorking.removeAllViews();
+        goalsColDone.removeAllViews();
         final List<GoalEntry> finalGoals = (goals != null) ? goals : new ArrayList<>();
+
+        // Setup the columns and individual cards to accept drag drops
+        android.view.View.OnDragListener dragListener = (v, event) -> {
+            switch (event.getAction()) {
+                case android.view.DragEvent.ACTION_DRAG_STARTED:
+                    return true;
+                case android.view.DragEvent.ACTION_DRAG_ENTERED:
+                    v.setAlpha(0.6f); // visually indicate drop target
+                    return true;
+                case android.view.DragEvent.ACTION_DRAG_EXITED:
+                    v.setAlpha(1f);
+                    return true;
+                case android.view.DragEvent.ACTION_DROP:
+                    v.setAlpha(1f);
+                    GoalEntry draggedEntry = (GoalEntry) event.getLocalState();
+                    if (draggedEntry != null) {
+                        int newState = 0;
+                        int vid = v.getId();
+                        android.view.ViewParent parent = v.getParent();
+                        if (vid == R.id.goalsColOngoing || vid == R.id.colOngoingContainer || parent == goalsColOngoing) newState = 0;
+                        else if (vid == R.id.goalsColWorking || vid == R.id.colWorkingContainer || parent == goalsColWorking) newState = 1;
+                        else if (vid == R.id.goalsColDone || vid == R.id.colDoneContainer || parent == goalsColDone) newState = 2;
+
+                        if (draggedEntry.state != newState) {
+                            draggedEntry.state = newState;
+                            saveGoalsForDate(dateKey, finalGoals);
+                            showGoalsForDate(dateKey, finalGoals);
+                        }
+                    }
+                    return true;
+                case android.view.DragEvent.ACTION_DRAG_ENDED:
+                    v.setAlpha(1f);
+                    return true;
+            }
+            return false;
+        };
 
         LayoutInflater inflater = LayoutInflater.from(this);
         for (GoalEntry entry : finalGoals) {
-            View row = inflater.inflate(R.layout.item_goal_row, goalsList, false);
+            View row = inflater.inflate(R.layout.item_goal_row, null, false);
             View checkButton = row.findViewById(R.id.goalCheckButton);
             View checkCircle = row.findViewById(R.id.goalCheckCircle);
             android.widget.ImageView checkIcon = row.findViewById(R.id.goalCheckIcon);
+            
+            // Hide standard checkboxes since this is a drag-and-drop Kanban board
+            if (checkButton != null) checkButton.setVisibility(View.GONE);
+            if (checkCircle != null) checkCircle.setVisibility(View.GONE);
+            if (checkIcon != null) checkIcon.setVisibility(View.GONE);
+
             TextView goalText = row.findViewById(R.id.goalText);
             ImageButton deleteButton = row.findViewById(R.id.goalDeleteButton);
 
             goalText.setText(entry.text);
-            applyGoalCompletedStyle(goalText, checkCircle, checkIcon, entry.completed);
 
-            if (checkButton != null) {
-                checkButton.setOnClickListener(v -> {
-                    entry.completed = !entry.completed;
-                    applyGoalCompletedStyle(goalText, checkCircle, checkIcon, entry.completed);
-                    saveGoalsForDate(dateKey, finalGoals);
-                });
+            if (entry.state == 2) { // Completed
+                goalText.setPaintFlags(goalText.getPaintFlags() | Paint.STRIKE_THRU_TEXT_FLAG);
+                goalText.setAlpha(0.6f);
+            } else {
+                goalText.setPaintFlags(goalText.getPaintFlags() & (~Paint.STRIKE_THRU_TEXT_FLAG));
+                goalText.setAlpha(1f);
             }
+
+            // Create a shared drag starter
+            android.view.View.OnLongClickListener dragStarter = v -> {
+                android.content.ClipData data = android.content.ClipData.newPlainText("goal", "goal");
+                View.DragShadowBuilder shadowBuilder = new View.DragShadowBuilder(row);
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
+                    row.startDragAndDrop(data, shadowBuilder, entry, 0);
+                } else {
+                    row.startDrag(data, shadowBuilder, entry, 0);
+                }
+                return true;
+            };
+
+            row.setOnLongClickListener(dragStarter);
+            row.setOnDragListener(dragListener); // Allow dropping directly onto another card
 
             if (goalText != null) {
                 goalText.setOnClickListener(v -> showEditGoalDialog(dateKey, entry, finalGoals));
+                goalText.setOnLongClickListener(dragStarter); // Prevent text from swallowing the long press
             }
 
             if (deleteButton != null) {
@@ -501,9 +566,24 @@ public class CalendarActivity extends AppCompatActivity {
             );
             lp.topMargin = dpToPx(8);
             row.setLayoutParams(lp);
+            row.setBackgroundResource(R.drawable.bg_login_input); // Gives a nice card shape
 
-            goalsList.addView(row);
+            if (entry.state == 0) goalsColOngoing.addView(row);
+            else if (entry.state == 1) goalsColWorking.addView(row);
+            else goalsColDone.addView(row);
         }
+        
+        View ongoingCont = findViewById(R.id.colOngoingContainer);
+        View workingCont = findViewById(R.id.colWorkingContainer);
+        View doneCont = findViewById(R.id.colDoneContainer);
+
+        if (ongoingCont != null) ongoingCont.setOnDragListener(dragListener);
+        if (workingCont != null) workingCont.setOnDragListener(dragListener);
+        if (doneCont != null) doneCont.setOnDragListener(dragListener);
+
+        goalsColOngoing.setOnDragListener(dragListener);
+        goalsColWorking.setOnDragListener(dragListener);
+        goalsColDone.setOnDragListener(dragListener);
     }
 
     private void showEditGoalDialog(String dateKey, GoalEntry entry, List<GoalEntry> goals) {
@@ -535,7 +615,7 @@ public class CalendarActivity extends AppCompatActivity {
         if (text.isEmpty()) return;
 
         List<GoalEntry> goals = getGoalsForDate(selectedGoalsDateKey);
-        goals.add(new GoalEntry(text, false));
+        goals.add(new GoalEntry(text, 0)); // 0 = Planning
         saveGoalsForDate(selectedGoalsDateKey, goals);
         goalsAddInput.setText("");
         updateGoalsList(currentCalendar.get(Calendar.YEAR), currentCalendar.get(Calendar.MONTH));
@@ -561,9 +641,19 @@ public class CalendarActivity extends AppCompatActivity {
             if (item == null || item.trim().isEmpty()) continue;
             String[] partsGoal = item.split("\\|");
             String text = partsGoal.length > 0 ? partsGoal[0] : "";
-            boolean completed = partsGoal.length > 1 && Boolean.parseBoolean(partsGoal[1]);
+            
+            int state = 0;
+            if (partsGoal.length > 1) {
+                String stateStr = partsGoal[1];
+                if ("true".equalsIgnoreCase(stateStr)) state = 2; // Migrate old checked
+                else if ("false".equalsIgnoreCase(stateStr)) state = 0; // Migrate old unchecked
+                else {
+                    try { state = Integer.parseInt(stateStr); } catch (Exception ignored) {}
+                }
+            }
+            
             if (text.trim().isEmpty()) continue;
-            goals.add(new GoalEntry(text, completed));
+            goals.add(new GoalEntry(text, state));
         }
 
         return goals;
@@ -600,7 +690,7 @@ public class CalendarActivity extends AppCompatActivity {
             String text = entry.text != null ? entry.text.trim() : "";
             if (text.isEmpty()) continue;
             if (!first) out.append("|||");
-            out.append(text).append("|").append(entry.completed);
+            out.append(text).append("|").append(entry.state);
             first = false;
         }
         return out.toString();
@@ -666,33 +756,13 @@ public class CalendarActivity extends AppCompatActivity {
         return storyData;
     }
 
-    private void applyGoalCompletedStyle(TextView goalText, View checkCircle, android.widget.ImageView checkIcon, boolean completed) {
-        if (checkCircle != null) {
-            checkCircle.setBackgroundResource(completed ? R.drawable.bg_goal_check_checked : R.drawable.bg_goal_check_unchecked);
-        }
-        if (checkIcon != null) {
-            checkIcon.setVisibility(completed ? View.VISIBLE : View.GONE);
-        }
-        if (goalText != null) {
-            int color = getColor(completed ? R.color.menu_text_secondary : R.color.menu_text_primary);
-            goalText.setTextColor(color);
-            goalText.setAlpha(completed ? 0.8f : 1f);
-            int flags = goalText.getPaintFlags();
-            if (completed) {
-                goalText.setPaintFlags(flags | Paint.STRIKE_THRU_TEXT_FLAG);
-            } else {
-                goalText.setPaintFlags(flags & (~Paint.STRIKE_THRU_TEXT_FLAG));
-            }
-        }
-    }
-
     private static class GoalEntry {
         String text;
-        boolean completed;
+        int state;
 
-        GoalEntry(String text, boolean completed) {
+        GoalEntry(String text, int state) {
             this.text = text;
-            this.completed = completed;
+            this.state = state;
         }
     }
 

@@ -777,11 +777,92 @@
                 </LinearLayout>
 
                 <LinearLayout
-                    android:id="@+id/goalsList"
+                    android:id="@+id/goalsKanbanScroll"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="12dp"
-                    android:orientation="vertical" />
+                    android:baselineAligned="false"
+                    android:orientation="horizontal"
+                    android:paddingBottom="16dp">
+
+                    <!-- Column: Planning -->
+                    <LinearLayout
+                        android:id="@+id/colOngoingContainer"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1"
+                        android:layout_marginEnd="6dp"
+                        android:background="@drawable/bg_menu_card_dark"
+                        android:orientation="vertical"
+                        android:padding="8dp">
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginBottom="8dp"
+                            android:text="Planning"
+                            android:textColor="@color/menu_text_primary"
+                            android:textSize="12sp"
+                            android:textStyle="bold" />
+                        <LinearLayout
+                            android:id="@+id/goalsColOngoing"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:minHeight="40dp"
+                            android:orientation="vertical" />
+                    </LinearLayout>
+
+                    <!-- Column: Ongoing -->
+                    <LinearLayout
+                        android:id="@+id/colWorkingContainer"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1"
+                        android:layout_marginEnd="6dp"
+                        android:background="@drawable/bg_menu_card_dark"
+                        android:orientation="vertical"
+                        android:padding="8dp">
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginBottom="8dp"
+                            android:text="Ongoing"
+                            android:textColor="@color/menu_teal"
+                            android:textSize="12sp"
+                            android:textStyle="bold" />
+                        <LinearLayout
+                            android:id="@+id/goalsColWorking"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:minHeight="40dp"
+                            android:orientation="vertical" />
+                    </LinearLayout>
+
+                    <!-- Column: Completed -->
+                    <LinearLayout
+                        android:id="@+id/colDoneContainer"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1"
+                        android:background="@drawable/bg_menu_card_dark"
+                        android:orientation="vertical"
+                        android:padding="8dp">
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginBottom="8dp"
+                            android:text="Completed"
+                            android:textColor="@color/menu_text_secondary"
+                            android:textSize="12sp"
+                            android:textStyle="bold" />
+                        <LinearLayout
+                            android:id="@+id/goalsColDone"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:minHeight="40dp"
+                            android:orientation="vertical" />
+                    </LinearLayout>
+
+                </LinearLayout>
             </LinearLayout>
 
         </LinearLayout>

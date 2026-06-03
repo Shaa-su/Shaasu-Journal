@@ -971,7 +971,7 @@ public class StoryDetailActivity extends AppCompatActivity {
         if (addGoalEditText == null) return;
         String text = addGoalEditText.getText().toString().trim();
         if (text.isEmpty()) return;
-        addGoal(text, false);
+        addGoal(text, 0); // 0 = Planning Kanban state
         addGoalEditText.setText("");
         updateGoalsUi();
     }
@@ -992,7 +992,7 @@ public class StoryDetailActivity extends AppCompatActivity {
         int total = goalItems.size();
         int completed = 0;
         for (GoalItem item : goalItems) {
-            if (item.completed) completed++;
+            if (item.state == 2) completed++;
         }
 
         if (goalsCountText != null) {
@@ -1019,7 +1019,7 @@ public class StoryDetailActivity extends AppCompatActivity {
         int total = goalItems.size();
         int completed = 0;
         for (GoalItem item : goalItems) {
-            if (item.completed) completed++;
+            if (item.state == 2) completed++;
         }
 
         if (total <= 0) {
@@ -1039,10 +1039,10 @@ public class StoryDetailActivity extends AppCompatActivity {
     }
 
     private void addGoal(String goalText) {
-        addGoal(goalText, false);
+        addGoal(goalText, 0); // 0 = Planning
     }
 
-    private void addGoal(String goalText, boolean completed) {
+    private void addGoal(String goalText, int state) {
         if (goalsContainer == null) return;
 
         View row = LayoutInflater.from(this).inflate(R.layout.item_goal_row, goalsContainer, false);
@@ -1062,14 +1062,15 @@ public class StoryDetailActivity extends AppCompatActivity {
         goalTextView.setText(goalText);
 
         GoalItem item = new GoalItem(row, goalTextView, checkCircle, checkIcon, deleteButton);
+        item.state = state;
         goalItems.add(item);
         goalsContainer.addView(row);
 
-        setGoalCompleted(item, completed);
+        setGoalCompleted(item, state == 2);
 
         if (checkButton != null) {
             checkButton.setOnClickListener(v -> {
-                setGoalCompleted(item, !item.completed);
+                setGoalCompleted(item, item.state != 2);
                 updateGoalsUi();
             });
         }
@@ -1087,7 +1088,7 @@ public class StoryDetailActivity extends AppCompatActivity {
 
     private void setGoalCompleted(GoalItem item, boolean completed) {
         if (item == null) return;
-        item.completed = completed;
+        item.state = completed ? 2 : 0;
 
         if (item.checkCircle != null) {
             item.checkCircle.setBackgroundResource(completed ? R.drawable.bg_goal_check_checked : R.drawable.bg_goal_check_unchecked);
@@ -1262,7 +1263,6 @@ public class StoryDetailActivity extends AppCompatActivity {
         for (int i = 0; i < goalItems.size(); i++) {
             GoalItem item = goalItems.get(i);
             String goalText = item.textView != null ? item.textView.getText().toString() : "";
-            boolean isCompleted = item.completed;
 
             goalText = goalText != null ? goalText.trim() : "";
             if (goalText.isEmpty()) continue;
@@ -1270,7 +1270,7 @@ public class StoryDetailActivity extends AppCompatActivity {
             if (!firstGoal) {
                 goalsData.append("|||");
             }
-            goalsData.append(goalText).append("|").append(isCompleted);
+            goalsData.append(goalText).append("|").append(item.state);
             firstGoal = false;
         }
         
@@ -1433,9 +1433,16 @@ public class StoryDetailActivity extends AppCompatActivity {
                 for (String goal : goals) {
                     String[] goalParts = goal.split("\\|");
                     String goalText = goalParts.length > 0 ? goalParts[0] : "";
-                    boolean isCompleted = goalParts.length > 1 && Boolean.parseBoolean(goalParts[1]);
+                    
+                    int state = 0;
+                    if (goalParts.length > 1) {
+                        String stateStr = goalParts[1];
+                        if ("true".equalsIgnoreCase(stateStr)) state = 2;
+                        else if ("false".equalsIgnoreCase(stateStr)) state = 0;
+                        else { try { state = Integer.parseInt(stateStr); } catch (Exception ignored) {} }
+                    }
 
-                    addGoal(goalText, isCompleted);
+                    addGoal(goalText, state);
                 }
             }
 
@@ -1652,7 +1659,7 @@ public class StoryDetailActivity extends AppCompatActivity {
         final View checkCircle;
         final ImageView checkIcon;
         final ImageButton deleteButton;
-        boolean completed;
+        int state;
 
         GoalItem(View row, TextView textView, View checkCircle, ImageView checkIcon, ImageButton deleteButton) {
             this.row = row;
