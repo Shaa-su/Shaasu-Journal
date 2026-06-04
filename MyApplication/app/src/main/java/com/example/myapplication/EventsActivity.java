@@ -12,6 +12,7 @@ import android.view.ViewGroup;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.graphics.Color;
@@ -43,6 +44,8 @@ public class EventsActivity extends AppCompatActivity {
     // Repeat & toggle state
     private boolean repeatYearly = true;
     private boolean notifyOnDay = true;
+    private int notifyHour = 9;
+    private int notifyMinute = 0;
     private int overlayOpacity = 40; // 0-100
     // Event date state
     private int eventMonth; // 0-11
@@ -421,23 +424,40 @@ public class EventsActivity extends AppCompatActivity {
         // Delete button
         if (deleteButton != null) {
             deleteButton.setOnClickListener(v -> {
-                new AlertDialog.Builder(this)
-                        .setTitle("Delete Event")
-                        .setMessage("Delete \"" + event.title + "\"?")
-                        .setPositiveButton("Delete", (d, w) -> {
-                            // Cancel any reminders
-                            java.util.List<Reminder> all = ReminderStore.getAll(this);
-                            for (Reminder r : all) {
-                                if (r.title.equals(event.title)) {
-                                    ReminderScheduler.cancel(this, r);
-                                    ReminderStore.delete(this, r.id);
-                                }
-                            }
-                            EventStore.delete(this, event.id);
-                            refreshEventsList();
-                        })
-                        .setNegativeButton("Cancel", null)
-                        .show();
+                View container = LayoutInflater.from(this).inflate(R.layout.dialog_delete_event, null, false);
+                TextView message = container.findViewById(R.id.deleteEventMessage);
+                TextView cancelBtn = container.findViewById(R.id.deleteEventCancel);
+                TextView confirmBtn = container.findViewById(R.id.deleteEventConfirm);
+                if (message == null || cancelBtn == null || confirmBtn == null) return;
+
+                message.setText("Delete \"" + event.title + "\"?");
+
+                AlertDialog dialog = new AlertDialog.Builder(this)
+                        .setView(container)
+                        .create();
+                dialog.setOnShowListener(d -> {
+                    if (dialog.getWindow() != null) {
+                        dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+                        dialog.getWindow().setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+                    }
+                });
+
+                confirmBtn.setOnClickListener(c -> {
+                    // Cancel any reminders
+                    java.util.List<Reminder> all = ReminderStore.getAll(this);
+                    for (Reminder r : all) {
+                        if (r.title.equals(event.title)) {
+                            ReminderScheduler.cancel(this, r);
+                            ReminderStore.delete(this, r.id);
+                        }
+                    }
+                    EventStore.delete(this, event.id);
+                    refreshEventsList();
+                    dialog.dismiss();
+                });
+
+                cancelBtn.setOnClickListener(c -> dialog.dismiss());
+                dialog.show();
             });
         }
 
@@ -535,6 +555,9 @@ public class EventsActivity extends AppCompatActivity {
 
         android.widget.SeekBar overlaySlider = container.findViewById(R.id.overlaySlider);
         TextView overlayValue = container.findViewById(R.id.overlayValue);
+        TextView notifyTimeDisplay = container.findViewById(R.id.notifyTimeDisplay);
+        TextView notifyMinuteDisplay = container.findViewById(R.id.notifyMinuteDisplay);
+        TextView notifyAmPmDisplay = container.findViewById(R.id.notifyAmPmDisplay);
 
         if (titleInput == null || saveButton == null || closeButton == null) return;
 
@@ -544,6 +567,8 @@ public class EventsActivity extends AppCompatActivity {
             eventMonth = editEvent.month;
             eventDay = editEvent.day;
             overlayOpacity = editEvent.overlayOpacity;
+            notifyHour = editEvent.notifyHour;
+            notifyMinute = editEvent.notifyMinute;
             repeatYearly = editEvent.repeatYearly;
             notifyOnDay = editEvent.notifyOnDay;
             titleInput.setText(editEvent.title);
@@ -619,20 +644,196 @@ public class EventsActivity extends AppCompatActivity {
             });
         }
 
+        // Notification time picker (using ReminderClockView)
+        if (notifyTimeDisplay != null && notifyMinuteDisplay != null) {
+            updateTimeDisplay(notifyTimeDisplay, notifyMinuteDisplay, notifyAmPmDisplay);
+            View.OnClickListener openClock = v -> {
+                View clockContainer = LayoutInflater.from(this).inflate(R.layout.dialog_reminder, null, false);
+                ReminderClockView clockView = clockContainer.findViewById(R.id.reminderClock);
+                TextView hourChip = clockContainer.findViewById(R.id.reminderHourChip);
+                TextView minuteChip = clockContainer.findViewById(R.id.reminderMinuteChip);
+                TextView ampmChip = clockContainer.findViewById(R.id.reminderAmPmChip);
+                TextView toggleClock = clockContainer.findViewById(R.id.reminderToggleClock);
+                TextView toggleKeyboard = clockContainer.findViewById(R.id.reminderToggleKeyboard);
+                TextView modeLabel = clockContainer.findViewById(R.id.reminderModeLabel);
+                TextView pickTimeHint = clockContainer.findViewById(R.id.reminderPickTimeHint);
+                LinearLayout timeRow = clockContainer.findViewById(R.id.reminderTimeRow);
+                LinearLayout keyboardRow = clockContainer.findViewById(R.id.reminderKeyboardRow);
+                EditText hourInput = clockContainer.findViewById(R.id.reminderHourInput);
+                EditText minuteInput = clockContainer.findViewById(R.id.reminderMinuteInput);
+                TextView keyboardAmPm = clockContainer.findViewById(R.id.reminderKeyboardAmPm);
+                TextView cancelBtn = clockContainer.findViewById(R.id.reminderCancel);
+                TextView saveBtn = clockContainer.findViewById(R.id.reminderSave);
+                View repeatSection = clockContainer.findViewById(R.id.reminderRepeatRow);
+                EditText titleInputRem = clockContainer.findViewById(R.id.reminderTitleInput);
+
+                if (clockView == null || hourChip == null || minuteChip == null || ampmChip == null
+                        || cancelBtn == null || saveBtn == null) return;
+
+                // Hide reminder title + repeat (not needed for event time picker)
+                if (titleInputRem != null) titleInputRem.setVisibility(View.GONE);
+                View reminderTimeLabel = clockContainer.findViewById(R.id.reminderTimeLabel);
+                if (reminderTimeLabel != null) reminderTimeLabel.setVisibility(View.GONE);
+                if (repeatSection != null) repeatSection.setVisibility(View.GONE);
+                View repeatLabel = clockContainer.findViewById(R.id.reminderRepeatLabel);
+                if (repeatLabel != null) repeatLabel.setVisibility(View.GONE);
+                TextView titleView = clockContainer.findViewById(R.id.reminderDialogTitle);
+                if (titleView != null) titleView.setText("Pick notification time");
+
+                boolean is24 = android.text.format.DateFormat.is24HourFormat(this);
+                final int[] chosenHour = {notifyHour};
+                final int[] chosenMinute = {notifyMinute};
+
+                clockView.setTime(chosenHour[0], chosenMinute[0], is24);
+                updateTimeChips(hourChip, minuteChip, ampmChip, chosenHour[0], chosenMinute[0]);
+
+                // Sync keyboard inputs from chosen values
+                Runnable syncInputsFromChosen = () -> {
+                    int displayHour = chosenHour[0];
+                    if (!is24) {
+                        displayHour = chosenHour[0] % 12;
+                        if (displayHour == 0) displayHour = 12;
+                    }
+                    if (hourInput != null) hourInput.setText(String.format(java.util.Locale.US, "%02d", displayHour));
+                    if (minuteInput != null) minuteInput.setText(String.format(java.util.Locale.US, "%02d", chosenMinute[0]));
+                    if (!is24 && keyboardAmPm != null) {
+                        keyboardAmPm.setVisibility(View.VISIBLE);
+                        keyboardAmPm.setText(chosenHour[0] >= 12 ? "PM" : "AM");
+                    } else if (keyboardAmPm != null) {
+                        keyboardAmPm.setVisibility(View.GONE);
+                    }
+                };
+
+                Runnable syncChosenFromInputs = () -> {
+                    int hourVal = safeParseInt(hourInput != null ? hourInput.getText().toString().trim() : "", is24 ? chosenHour[0] : 12);
+                    int minuteVal = safeParseInt(minuteInput != null ? minuteInput.getText().toString().trim() : "", chosenMinute[0]);
+                    minuteVal = Math.max(0, Math.min(59, minuteVal));
+                    if (is24) {
+                        hourVal = Math.max(0, Math.min(23, hourVal));
+                        chosenHour[0] = hourVal;
+                    } else {
+                        hourVal = Math.max(1, Math.min(12, hourVal));
+                        boolean pm = "PM".equalsIgnoreCase(keyboardAmPm != null ? keyboardAmPm.getText().toString() : "AM");
+                        int hour24 = (hourVal % 12) + (pm ? 12 : 0);
+                        if (hour24 == 24) hour24 = 0;
+                        chosenHour[0] = hour24;
+                    }
+                    chosenMinute[0] = minuteVal;
+                    updateTimeChips(hourChip, minuteChip, ampmChip, chosenHour[0], chosenMinute[0]);
+                    clockView.setTime(chosenHour[0], chosenMinute[0], is24);
+                };
+
+                clockView.setOnTimeChangeListener((h, m, mode) -> {
+                    chosenHour[0] = h;
+                    chosenMinute[0] = m;
+                    updateTimeChips(hourChip, minuteChip, ampmChip, h, m);
+                    syncInputsFromChosen.run();
+                    if (modeLabel != null)
+                        modeLabel.setText(mode == ReminderClockView.Mode.HOUR ? "Select Hour" : "Select Minute");
+                });
+
+                // Toggle clock/keyboard modes
+                if (toggleClock != null) {
+                    toggleClock.setOnClickListener(ev -> {
+                        toggleClock.setBackgroundResource(R.drawable.bg_reminder_time_chip_selected);
+                        if (toggleKeyboard != null) toggleKeyboard.setBackgroundResource(R.drawable.bg_reminder_time_chip);
+                        if (timeRow != null) timeRow.setVisibility(View.VISIBLE);
+                        if (clockView != null) clockView.setVisibility(View.VISIBLE);
+                        if (pickTimeHint != null) pickTimeHint.setVisibility(View.VISIBLE);
+                        if (modeLabel != null) modeLabel.setVisibility(View.VISIBLE);
+                        if (keyboardRow != null) keyboardRow.setVisibility(View.GONE);
+                    });
+                }
+                if (toggleKeyboard != null) {
+                    toggleKeyboard.setOnClickListener(ev -> {
+                        toggleKeyboard.setBackgroundResource(R.drawable.bg_reminder_time_chip_selected);
+                        if (toggleClock != null) toggleClock.setBackgroundResource(R.drawable.bg_reminder_time_chip);
+                        if (timeRow != null) timeRow.setVisibility(View.GONE);
+                        if (clockView != null) clockView.setVisibility(View.GONE);
+                        if (pickTimeHint != null) pickTimeHint.setVisibility(View.GONE);
+                        if (modeLabel != null) modeLabel.setVisibility(View.GONE);
+                        if (keyboardRow != null) keyboardRow.setVisibility(View.VISIBLE);
+                        syncInputsFromChosen.run();
+                    });
+                }
+
+                if (timeRow != null) {
+                    timeRow.setOnClickListener(ev -> {
+                        if (keyboardRow != null && keyboardRow.getVisibility() == View.VISIBLE) {
+                            syncChosenFromInputs.run();
+                            return;
+                        }
+                        ReminderClockView.Mode curMode = clockView.getMode();
+                        ReminderClockView.Mode next = curMode == ReminderClockView.Mode.HOUR
+                                ? ReminderClockView.Mode.MINUTE : ReminderClockView.Mode.HOUR;
+                        clockView.setMode(next);
+                        if (modeLabel != null)
+                            modeLabel.setText(next == ReminderClockView.Mode.HOUR ? "Select Hour" : "Select Minute");
+                    });
+                }
+
+                hourChip.setOnClickListener(ev -> clockView.setMode(ReminderClockView.Mode.HOUR));
+                minuteChip.setOnClickListener(ev -> clockView.setMode(ReminderClockView.Mode.MINUTE));
+                if (!is24 && ampmChip != null) {
+                    ampmChip.setOnClickListener(ev -> {
+                        if (chosenHour[0] >= 12) chosenHour[0] -= 12;
+                        else chosenHour[0] += 12;
+                        clockView.setTime(chosenHour[0], chosenMinute[0], false);
+                        updateTimeChips(hourChip, minuteChip, ampmChip, chosenHour[0], chosenMinute[0]);
+                        syncInputsFromChosen.run();
+                    });
+                }
+
+                if (keyboardAmPm != null) {
+                    keyboardAmPm.setOnClickListener(ev -> {
+                        if (is24) return;
+                        keyboardAmPm.setText("AM".equalsIgnoreCase(keyboardAmPm.getText().toString()) ? "PM" : "AM");
+                        syncChosenFromInputs.run();
+                    });
+                }
+                if (hourInput != null) hourInput.setOnFocusChangeListener((ev, hasFocus) -> { if (!hasFocus) syncChosenFromInputs.run(); });
+                if (minuteInput != null) minuteInput.setOnFocusChangeListener((ev, hasFocus) -> { if (!hasFocus) syncChosenFromInputs.run(); });
+
+                syncInputsFromChosen.run();
+
+                AlertDialog clockDialog = new AlertDialog.Builder(this)
+                        .setView(clockContainer)
+                        .create();
+                clockDialog.setOnShowListener(d -> {
+                    if (clockDialog.getWindow() != null) {
+                        clockDialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+                        clockDialog.getWindow().setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+                    }
+                });
+
+                cancelBtn.setOnClickListener(ev -> clockDialog.dismiss());
+                saveBtn.setOnClickListener(ev -> {
+                    // Sync keyboard inputs before saving (in case user typed directly)
+                    if (keyboardRow != null && keyboardRow.getVisibility() == View.VISIBLE) {
+                        syncChosenFromInputs.run();
+                    }
+                    notifyHour = chosenHour[0];
+                    notifyMinute = chosenMinute[0];
+                    updateTimeDisplay(notifyTimeDisplay, notifyMinuteDisplay, notifyAmPmDisplay);
+                    clockDialog.dismiss();
+                });
+
+                clockDialog.show();
+            };
+            notifyTimeDisplay.setOnClickListener(openClock);
+            notifyMinuteDisplay.setOnClickListener(openClock);
+            if (notifyAmPmDisplay != null) notifyAmPmDisplay.setOnClickListener(openClock);
+        }
+
         closeButton.setOnClickListener(v -> dialog.dismiss());
 
         // Month selector
         if (monthSelector != null) {
             monthSelector.setOnClickListener(v -> {
-                String[] months = MONTH_NAMES;
-                int current = eventMonth;
-                new android.app.AlertDialog.Builder(this)
-                        .setTitle("Select Month")
-                        .setItems(months, (d, which) -> {
-                            eventMonth = which;
-                            monthSelector.setText(MONTH_NAMES[which]);
-                        })
-                        .show();
+                showItemPickerDialog("Select Month", MONTH_NAMES, eventMonth, (which) -> {
+                    eventMonth = which;
+                    monthSelector.setText(MONTH_NAMES[which]);
+                });
             });
         }
 
@@ -646,13 +847,10 @@ public class EventsActivity extends AppCompatActivity {
                 maxDay = temp.getActualMaximum(java.util.Calendar.DAY_OF_MONTH);
                 String[] days = new String[maxDay];
                 for (int i = 0; i < maxDay; i++) days[i] = String.valueOf(i + 1);
-                new android.app.AlertDialog.Builder(this)
-                        .setTitle("Select Day")
-                        .setItems(days, (d, which) -> {
-                            eventDay = which + 1;
-                            daySelector.setText(String.valueOf(eventDay));
-                        })
-                        .show();
+                showItemPickerDialog("Select Day", days, eventDay - 1, (which) -> {
+                    eventDay = which + 1;
+                    daySelector.setText(String.valueOf(eventDay));
+                });
             });
         }
 
@@ -716,6 +914,8 @@ public class EventsActivity extends AppCompatActivity {
                     eventDay,
                     repeatYearly,
                     notifyOnDay,
+                    notifyHour,
+                    notifyMinute,
                     selectedBackgroundUri != null ? selectedBackgroundUri.toString() : null,
                     savedOpacity,
                     System.currentTimeMillis()
@@ -764,6 +964,125 @@ public class EventsActivity extends AppCompatActivity {
         } else {
             toggle.setBackgroundResource(R.drawable.bg_event_segment_unselected);
             toggle.setGravity(android.view.Gravity.START);
+        }
+    }
+
+    private void updateTimeDisplay(TextView hourDisplay, TextView minuteDisplay, TextView ampmDisplay) {
+        if (hourDisplay == null || minuteDisplay == null) return;
+        boolean is24 = android.text.format.DateFormat.is24HourFormat(this);
+        int displayHour = notifyHour;
+        String amPm = "AM";
+        if (!is24) {
+            if (notifyHour >= 12) amPm = "PM";
+            displayHour = notifyHour % 12;
+            if (displayHour == 0) displayHour = 12;
+        }
+        hourDisplay.setText(String.format(java.util.Locale.US, "%02d", displayHour));
+        minuteDisplay.setText(String.format(java.util.Locale.US, "%02d", notifyMinute));
+        if (ampmDisplay != null) {
+            if (is24) ampmDisplay.setVisibility(View.GONE);
+            else {
+                ampmDisplay.setVisibility(View.VISIBLE);
+                ampmDisplay.setText(amPm);
+            }
+        }
+    }
+
+    private void updateTimeChips(TextView hourChip, TextView minuteChip, TextView ampmChip, int hour24, int minute) {
+        boolean is24 = android.text.format.DateFormat.is24HourFormat(this);
+        int displayHour = hour24;
+        String ampm = "AM";
+        if (!is24) {
+            if (hour24 >= 12) ampm = "PM";
+            displayHour = hour24 % 12;
+            if (displayHour == 0) displayHour = 12;
+        }
+        if (hourChip != null) hourChip.setText(String.format(java.util.Locale.US, "%02d", displayHour));
+        if (minuteChip != null) minuteChip.setText(String.format(java.util.Locale.US, "%02d", minute));
+        if (ampmChip != null) {
+            if (is24) {
+                ampmChip.setVisibility(View.GONE);
+            } else {
+                ampmChip.setVisibility(View.VISIBLE);
+                ampmChip.setText(ampm);
+            }
+        }
+    }
+
+    private void showItemPickerDialog(String title, String[] items, int selectedIndex,
+                                      java.util.function.IntConsumer onSelect) {
+        View container = LayoutInflater.from(this).inflate(R.layout.dialog_select_item, null, false);
+        TextView titleView = container.findViewById(R.id.selectDialogTitle);
+        LinearLayout itemsContainer = container.findViewById(R.id.selectDialogItems);
+        TextView cancelView = container.findViewById(R.id.selectDialogCancel);
+        if (titleView == null || itemsContainer == null || cancelView == null) return;
+
+        titleView.setText(title);
+        itemsContainer.removeAllViews();
+
+        // Cap scroll area so cancel button stays visible
+        ScrollView scrollView = container.findViewById(R.id.selectScrollView);
+        if (scrollView != null) {
+            int itemHeightPx = dpToPx(50); // ~50dp per item row
+            int maxVisibleItems = Math.min(items.length, 6);
+            scrollView.setLayoutParams(new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    itemHeightPx * maxVisibleItems));
+        }
+
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setView(container)
+                .create();
+        dialog.setOnShowListener(d -> {
+            if (dialog.getWindow() != null) {
+                dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+                dialog.getWindow().setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            }
+        });
+        cancelView.setOnClickListener(v -> dialog.dismiss());
+
+        for (int i = 0; i < items.length; i++) {
+            final int index = i;
+            TextView item = new TextView(this);
+            item.setText(items[i]);
+            item.setTextSize(15f);
+            item.setPadding(0, dpToPx(14), 0, dpToPx(14));
+            item.setClickable(true);
+            item.setFocusable(true);
+
+            if (i == selectedIndex) {
+                item.setTextColor(getColor(R.color.event_accent));
+                item.setTypeface(null, android.graphics.Typeface.BOLD);
+            } else {
+                item.setTextColor(getColor(R.color.menu_text_primary));
+            }
+
+            item.setOnClickListener(v -> {
+                onSelect.accept(index);
+                dialog.dismiss();
+            });
+            itemsContainer.addView(item);
+
+            // Divider
+            if (i < items.length - 1) {
+                View divider = new View(this);
+                divider.setLayoutParams(new LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT, 1));
+                divider.setBackgroundColor(getColor(R.color.menu_text_secondary));
+                divider.setAlpha(0.12f);
+                itemsContainer.addView(divider);
+            }
+        }
+
+        dialog.show();
+    }
+
+    private int safeParseInt(String text, int fallback) {
+        if (text == null || text.isEmpty()) return fallback;
+        try {
+            return Integer.parseInt(text);
+        } catch (NumberFormatException ignored) {
+            return fallback;
         }
     }
 }

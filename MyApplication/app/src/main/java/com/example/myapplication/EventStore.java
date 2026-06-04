@@ -46,12 +46,16 @@ public final class EventStore {
         public final int day;
         public final boolean repeatYearly;
         public boolean notifyOnDay;
+        public int notifyHour; // 0-23
+        public int notifyMinute; // 0-59
         public String backgroundUri; // nullable
         public int overlayOpacity; // 0-100
         public final long createdAtMillis;
 
         public EventItem(String id, String title, String note, int year, int month, int day,
-                         boolean repeatYearly, boolean notifyOnDay, String backgroundUri,
+                         boolean repeatYearly, boolean notifyOnDay,
+                         int notifyHour, int notifyMinute,
+                         String backgroundUri,
                          int overlayOpacity, long createdAtMillis) {
             this.id = id;
             this.title = title;
@@ -61,6 +65,8 @@ public final class EventStore {
             this.day = day;
             this.repeatYearly = repeatYearly;
             this.notifyOnDay = notifyOnDay;
+            this.notifyHour = notifyHour;
+            this.notifyMinute = notifyMinute;
             this.backgroundUri = backgroundUri;
             this.overlayOpacity = overlayOpacity;
             this.createdAtMillis = createdAtMillis;
@@ -76,6 +82,8 @@ public final class EventStore {
             obj.put("day", day);
             obj.put("repeatYearly", repeatYearly);
             obj.put("notifyOnDay", notifyOnDay);
+            obj.put("notifyHour", notifyHour);
+            obj.put("notifyMinute", notifyMinute);
             obj.put("backgroundUri", backgroundUri != null ? backgroundUri : "");
             obj.put("overlayOpacity", overlayOpacity);
             obj.put("createdAtMillis", createdAtMillis);
@@ -94,6 +102,8 @@ public final class EventStore {
                     obj.optInt("day", 1),
                     obj.optBoolean("repeatYearly", false),
                     obj.optBoolean("notifyOnDay", false),
+                    obj.optInt("notifyHour", 9),
+                    obj.optInt("notifyMinute", 0),
                     bgUri.isEmpty() ? null : bgUri,
                     obj.optInt("overlayOpacity", 40),
                     obj.optLong("createdAtMillis", System.currentTimeMillis())
@@ -172,8 +182,8 @@ public final class EventStore {
         cal.set(Calendar.YEAR, targetYear);
         cal.set(Calendar.MONTH, item.month);
         cal.set(Calendar.DAY_OF_MONTH, item.day);
-        cal.set(Calendar.HOUR_OF_DAY, 9); // 9:00 AM default
-        cal.set(Calendar.MINUTE, 0);
+        cal.set(Calendar.HOUR_OF_DAY, item.notifyHour);
+        cal.set(Calendar.MINUTE, item.notifyMinute);
         cal.set(Calendar.SECOND, 0);
         cal.set(Calendar.MILLISECOND, 0);
 

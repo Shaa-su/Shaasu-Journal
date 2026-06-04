@@ -342,6 +342,74 @@
         </LinearLayout>
     </LinearLayout>
 
+    <!-- Notification time selector -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Time"
+            android:textColor="@color/menu_text_secondary"
+            android:textSize="13sp"
+            android:layout_marginEnd="12dp" />
+
+        <TextView
+            android:id="@+id/notifyTimeDisplay"
+            android:layout_width="56dp"
+            android:layout_height="40dp"
+            android:gravity="center"
+            android:background="@drawable/bg_reminder_time_chip"
+            android:text="09"
+            android:textColor="@color/menu_text_primary"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:clickable="true"
+            android:focusable="true" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="4dp"
+            android:layout_marginEnd="4dp"
+            android:text=":"
+            android:textColor="@color/menu_text_secondary"
+            android:textSize="16sp" />
+
+        <TextView
+            android:id="@+id/notifyMinuteDisplay"
+            android:layout_width="56dp"
+            android:layout_height="40dp"
+            android:gravity="center"
+            android:background="@drawable/bg_reminder_time_chip"
+            android:text="00"
+            android:textColor="@color/menu_text_primary"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:clickable="true"
+            android:focusable="true" />
+
+        <TextView
+            android:id="@+id/notifyAmPmDisplay"
+            android:layout_width="56dp"
+            android:layout_height="40dp"
+            android:layout_marginStart="6dp"
+            android:gravity="center"
+            android:background="@drawable/bg_reminder_time_chip_selected"
+            android:text="AM"
+            android:textColor="@color/menu_text_primary"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:clickable="true"
+            android:focusable="true" />
+    </LinearLayout>
+
     <!-- Save Event Button -->
     <TextView
         android:id="@+id/saveEventButton"

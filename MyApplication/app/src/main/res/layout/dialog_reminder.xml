@@ -56,10 +56,11 @@
         </LinearLayout>
 
         <TextView
+            android:id="@+id/reminderTimeLabel"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="6dp"
-            android:text="Reminder"
+            android:text="Time"
             android:textColor="@color/menu_text_secondary"
             android:textSize="12sp" />
 
@@ -221,6 +222,7 @@
         </LinearLayout>
 
         <TextView
+            android:id="@+id/reminderRepeatLabel"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="14dp"
