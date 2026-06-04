@@ -190,15 +190,26 @@ public class EventsActivity extends AppCompatActivity {
         java.text.SimpleDateFormat dateFmt = new java.text.SimpleDateFormat("MMMM d", java.util.Locale.US);
         java.util.Calendar today = java.util.Calendar.getInstance();
 
-        // Group events into sections: Today, This Month, Future
+        // Group events into sections
         java.util.List<EventStore.EventItem> todayEvents = new java.util.ArrayList<>();
+        java.util.List<EventStore.EventItem> pastEvents = new java.util.ArrayList<>();
         java.util.List<EventStore.EventItem> thisMonthEvents = new java.util.ArrayList<>();
         java.util.List<EventStore.EventItem> futureEvents = new java.util.ArrayList<>();
 
         for (EventStore.EventItem event : events) {
-            if (event.month == today.get(java.util.Calendar.MONTH) && event.day == today.get(java.util.Calendar.DAY_OF_MONTH)) {
+            boolean isToday = event.month == today.get(java.util.Calendar.MONTH)
+                    && event.day == today.get(java.util.Calendar.DAY_OF_MONTH);
+            boolean isPastThisYear = event.month < today.get(java.util.Calendar.MONTH)
+                    || (event.month == today.get(java.util.Calendar.MONTH)
+                        && event.day < today.get(java.util.Calendar.DAY_OF_MONTH));
+
+            if (isToday) {
                 todayEvents.add(event);
+            } else if (isPastThisYear && !event.repeatYearly) {
+                // Non-yearly events that have passed
+                pastEvents.add(event);
             } else if (event.month == today.get(java.util.Calendar.MONTH)) {
+                // Same month, not today, not past
                 thisMonthEvents.add(event);
             } else {
                 futureEvents.add(event);
@@ -206,7 +217,8 @@ public class EventsActivity extends AppCompatActivity {
         }
 
         // Build sections
-        addEventSection("🎉  Today", todayEvents, inflater, dateFmt, today);
+        addEventSection("Today", todayEvents, inflater, dateFmt, today);
+        addEventSection("Past", pastEvents, inflater, dateFmt, today);
         addEventSection("This Month", thisMonthEvents, inflater, dateFmt, today);
         addEventSection("Upcoming", futureEvents, inflater, dateFmt, today);
     }
@@ -216,14 +228,26 @@ public class EventsActivity extends AppCompatActivity {
                                   java.util.Calendar today) {
         if (events.isEmpty()) return;
 
-        // Section header
+        // Section header with styled border
+        LinearLayout headerBox = new LinearLayout(this);
+        headerBox.setOrientation(LinearLayout.HORIZONTAL);
+        headerBox.setBackgroundResource(R.drawable.bg_event_section_header);
+        LinearLayout.LayoutParams headerLp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+        );
+        headerLp.setMargins(0, dpToPx(16), 0, dpToPx(10));
+        headerBox.setLayoutParams(headerLp);
+        headerBox.setPadding(dpToPx(14), dpToPx(8), dpToPx(14), dpToPx(8));
+
         TextView header = new TextView(this);
         header.setText(title);
         header.setTextColor(getColor(R.color.event_accent));
-        header.setTextSize(18f);
+        header.setTextSize(14f);
         header.setTypeface(null, android.graphics.Typeface.BOLD);
-        header.setPadding(0, dpToPx(16), 0, dpToPx(10));
-        eventsListContainer.addView(header);
+        headerBox.addView(header);
+
+        eventsListContainer.addView(headerBox);
 
         for (EventStore.EventItem event : events) {
             View card = inflater.inflate(R.layout.item_event_card, eventsListContainer, false);
