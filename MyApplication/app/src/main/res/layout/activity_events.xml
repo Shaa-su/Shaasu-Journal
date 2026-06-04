@@ -75,6 +75,7 @@
             app:layout_constraintBottom_toBottomOf="parent">
 
             <ImageView
+                android:id="@+id/enableAlertsIcon"
                 android:layout_width="16dp"
                 android:layout_height="16dp"
                 android:src="@android:drawable/ic_lock_idle_alarm"
@@ -82,6 +83,7 @@
                 android:contentDescription="Alerts" />
 
             <TextView
+                android:id="@+id/enableAlertsText"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="6dp"

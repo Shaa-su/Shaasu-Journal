@@ -28,20 +28,34 @@ import java.io.InputStream;
 public class EventsActivity extends AppCompatActivity {
 
     private static final int PICK_BACKGROUND_REQUEST = 100;
+    private static final String PREFS_ALERTS_ENABLED = "events_alerts_enabled";
 
     private View enableAlertsButton;
     private TextView newButton;
     private TextView addFirstEventButton;
+    private ImageView enableAlertsIcon;
+    private TextView enableAlertsText;
 
     // Repeat & toggle state
     private boolean repeatYearly = true;
     private boolean notifyOnDay = true;
+    // Event date state
+    private int eventMonth; // 0-11
+    private int eventDay;
+
+    // Master alerts toggle
+    private boolean alertsEnabled = false;
 
     // Background photo state
     private Uri selectedBackgroundUri;
     private AlertDialog currentDialog;
     private ImageView backgroundImage;
     private View uploadOverlay;
+
+    private static final String[] MONTH_NAMES = {
+            "January", "February", "March", "April", "May", "June",
+            "July", "August", "September", "October", "November", "December"
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -64,9 +78,15 @@ public class EventsActivity extends AppCompatActivity {
             backButton.setOnClickListener(v -> finish());
         }
 
-        // Enable Alerts
+        // Enable Alerts — find icon + text subviews
         enableAlertsButton = findViewById(R.id.enableAlertsButton);
         if (enableAlertsButton != null) {
+            enableAlertsIcon = enableAlertsButton.findViewById(R.id.enableAlertsIcon);
+            enableAlertsText = enableAlertsButton.findViewById(R.id.enableAlertsText);
+            // Load persisted state
+            alertsEnabled = getSharedPreferences("events_prefs", MODE_PRIVATE)
+                    .getBoolean(PREFS_ALERTS_ENABLED, false);
+            updateAlertsButtonUi();
             enableAlertsButton.setOnClickListener(v -> handleEnableAlerts());
         }
 
@@ -111,7 +131,65 @@ public class EventsActivity extends AppCompatActivity {
     }
 
     private void handleEnableAlerts() {
-        Toast.makeText(this, "Enable Alerts coming soon", Toast.LENGTH_SHORT).show();
+        alertsEnabled = !alertsEnabled;
+        // Persist
+        getSharedPreferences("events_prefs", MODE_PRIVATE)
+                .edit()
+                .putBoolean(PREFS_ALERTS_ENABLED, alertsEnabled)
+                .apply();
+
+        updateAlertsButtonUi();
+
+        if (alertsEnabled) {
+            // Re-schedule all event reminders
+            scheduleAllEventReminders();
+            Toast.makeText(this, "Alerts enabled for all events", Toast.LENGTH_SHORT).show();
+        } else {
+            // Cancel all event reminders
+            cancelAllEventReminders();
+            Toast.makeText(this, "Alerts disabled", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void updateAlertsButtonUi() {
+        if (enableAlertsButton == null) return;
+        if (alertsEnabled) {
+            enableAlertsButton.setBackgroundResource(R.drawable.bg_event_pill_glow);
+            if (enableAlertsIcon != null)
+                enableAlertsIcon.setColorFilter(getColor(R.color.event_accent));
+            if (enableAlertsText != null) {
+                enableAlertsText.setTextColor(getColor(R.color.event_accent));
+                enableAlertsText.setText("Alerts On");
+            }
+        } else {
+            enableAlertsButton.setBackgroundResource(R.drawable.bg_event_pill_glow_off);
+            if (enableAlertsIcon != null)
+                enableAlertsIcon.setColorFilter(getColor(R.color.menu_text_secondary));
+            if (enableAlertsText != null) {
+                enableAlertsText.setTextColor(getColor(R.color.menu_text_secondary));
+                enableAlertsText.setText("Enable Alerts");
+            }
+        }
+    }
+
+    private void scheduleAllEventReminders() {
+        java.util.List<EventStore.EventItem> events = EventStore.getAll(this);
+        for (EventStore.EventItem event : events) {
+            if (!event.notifyOnDay) continue;
+            long triggerAt = EventStore.computeTriggerAtMillis(event);
+            String dateKey = String.format("%04d-%02d-%02d", event.year, event.month + 1, event.day);
+            Reminder reminder = Reminder.create(event.title, triggerAt, dateKey, false);
+            ReminderStore.put(this, reminder);
+            ReminderScheduler.schedule(this, reminder);
+        }
+    }
+
+    private void cancelAllEventReminders() {
+        java.util.List<Reminder> all = ReminderStore.getAll(this);
+        for (Reminder r : all) {
+            ReminderScheduler.cancel(this, r);
+            ReminderStore.delete(this, r.id);
+        }
     }
 
     private void showNewEventDialog() {
@@ -131,6 +209,14 @@ public class EventsActivity extends AppCompatActivity {
         uploadOverlay = container.findViewById(R.id.uploadOverlay);
 
         if (titleInput == null || saveButton == null || closeButton == null) return;
+
+        // Initialize date from current date
+        java.util.Calendar now = java.util.Calendar.getInstance();
+        eventMonth = now.get(java.util.Calendar.MONTH);
+        eventDay = now.get(java.util.Calendar.DAY_OF_MONTH);
+
+        if (monthSelector != null) monthSelector.setText(MONTH_NAMES[eventMonth]);
+        if (daySelector != null) daySelector.setText(String.valueOf(eventDay));
 
         // Restore previously selected background if re-opening dialog
         if (selectedBackgroundUri != null && backgroundImage != null) {
@@ -184,6 +270,41 @@ public class EventsActivity extends AppCompatActivity {
 
         closeButton.setOnClickListener(v -> dialog.dismiss());
 
+        // Month selector
+        if (monthSelector != null) {
+            monthSelector.setOnClickListener(v -> {
+                String[] months = MONTH_NAMES;
+                int current = eventMonth;
+                new android.app.AlertDialog.Builder(this)
+                        .setTitle("Select Month")
+                        .setItems(months, (d, which) -> {
+                            eventMonth = which;
+                            monthSelector.setText(MONTH_NAMES[which]);
+                        })
+                        .show();
+            });
+        }
+
+        // Day selector
+        if (daySelector != null) {
+            daySelector.setOnClickListener(v -> {
+                int maxDay = 31;
+                java.util.Calendar temp = java.util.Calendar.getInstance();
+                temp.set(java.util.Calendar.YEAR, now.get(java.util.Calendar.YEAR));
+                temp.set(java.util.Calendar.MONTH, eventMonth);
+                maxDay = temp.getActualMaximum(java.util.Calendar.DAY_OF_MONTH);
+                String[] days = new String[maxDay];
+                for (int i = 0; i < maxDay; i++) days[i] = String.valueOf(i + 1);
+                new android.app.AlertDialog.Builder(this)
+                        .setTitle("Select Day")
+                        .setItems(days, (d, which) -> {
+                            eventDay = which + 1;
+                            daySelector.setText(String.valueOf(eventDay));
+                        })
+                        .show();
+            });
+        }
+
         // Background photo picker
         if (backgroundSelector != null) {
             backgroundSelector.setOnClickListener(v -> {
@@ -202,8 +323,38 @@ public class EventsActivity extends AppCompatActivity {
                 Toast.makeText(this, "Please enter an event title", Toast.LENGTH_SHORT).show();
                 return;
             }
-            // TODO: Save event logic
-            Toast.makeText(this, "Event saved!", Toast.LENGTH_SHORT).show();
+
+            String note = noteInput != null && noteInput.getText() != null
+                    ? noteInput.getText().toString().trim() : "";
+
+            int currentYear = now.get(java.util.Calendar.YEAR);
+
+            // Create and save the event
+            EventStore.EventItem event = new EventStore.EventItem(
+                    java.util.UUID.randomUUID().toString(),
+                    title,
+                    note,
+                    currentYear,
+                    eventMonth,
+                    eventDay,
+                    repeatYearly,
+                    notifyOnDay,
+                    System.currentTimeMillis()
+            );
+            EventStore.put(this, event);
+
+            // Schedule notification only if both master toggle AND event toggle are ON
+            if (notifyOnDay && alertsEnabled) {
+                long triggerAt = EventStore.computeTriggerAtMillis(event);
+                String dateKey = String.format("%04d-%02d-%02d", event.year, event.month + 1, event.day);
+
+                Reminder reminder = Reminder.create(title, triggerAt, dateKey, false);
+                ReminderStore.put(this, reminder);
+                ReminderScheduler.schedule(this, reminder);
+            }
+
+            String msg = "Event saved" + (notifyOnDay && !alertsEnabled ? " (alerts are off)" : "");
+            Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
             dialog.dismiss();
         });
 
