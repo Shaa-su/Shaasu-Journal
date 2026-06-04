@@ -122,78 +122,104 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
-    <!-- Empty state content -->
-    <ScrollView
+    <!-- Content area -->
+    <FrameLayout
         android:layout_width="0dp"
         android:layout_height="0dp"
-        android:fillViewport="true"
         app:layout_constraintTop_toBottomOf="@+id/topDivider"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
 
-        <LinearLayout
+        <!-- Events list (populated state) -->
+        <ScrollView
+            android:id="@+id/eventsScroll"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:gravity="center_horizontal"
-            android:padding="32dp">
+            android:layout_height="match_parent"
+            android:fillViewport="true"
+            android:visibility="gone">
 
-            <!-- Central illustration card -->
             <LinearLayout
-                android:id="@+id/illustrationCard"
-                android:layout_width="150dp"
-                android:layout_height="150dp"
-                android:gravity="center"
-                android:background="@drawable/bg_event_card"
+                android:id="@+id/eventsListContainer"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:layout_marginTop="60dp">
+                android:padding="16dp" />
 
-                <ImageView
-                    android:layout_width="56dp"
-                    android:layout_height="56dp"
-                    android:src="@android:drawable/ic_menu_my_calendar"
-                    android:tint="@color/event_accent" />
+        </ScrollView>
+
+        <!-- Empty state -->
+        <ScrollView
+            android:id="@+id/emptyStateScroll"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:fillViewport="true"
+            android:visibility="visible">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:gravity="center_horizontal"
+                android:padding="32dp">
+
+                <!-- Central illustration card -->
+                <LinearLayout
+                    android:id="@+id/illustrationCard"
+                    android:layout_width="150dp"
+                    android:layout_height="150dp"
+                    android:gravity="center"
+                    android:background="@drawable/bg_event_card"
+                    android:orientation="vertical"
+                    android:layout_marginTop="60dp">
+
+                    <ImageView
+                        android:layout_width="56dp"
+                        android:layout_height="56dp"
+                        android:src="@android:drawable/ic_menu_my_calendar"
+                        android:tint="@color/event_accent" />
+                </LinearLayout>
+
+                <!-- Empty state title -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="28dp"
+                    android:text="No events yet"
+                    android:textColor="@color/menu_text_primary"
+                    android:textSize="22sp"
+                    android:textStyle="bold" />
+
+                <!-- Empty state subtitle -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:text="Add birthdays, anniversaries,\nor special milestones"
+                    android:textColor="@color/menu_text_secondary"
+                    android:textSize="14sp"
+                    android:gravity="center"
+                    android:lineSpacingExtra="3dp" />
+
+                <!-- Add First Event button -->
+                <TextView
+                    android:id="@+id/addFirstEventButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="48dp"
+                    android:layout_marginTop="32dp"
+                    android:gravity="center"
+                    android:paddingStart="28dp"
+                    android:paddingEnd="28dp"
+                    android:background="@drawable/bg_event_pill_orange"
+                    android:text="+ Add First Event"
+                    android:textColor="@color/black"
+                    android:textSize="15sp"
+                    android:textStyle="bold" />
+
             </LinearLayout>
 
-            <!-- Empty state title -->
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="28dp"
-                android:text="No events yet"
-                android:textColor="@color/menu_text_primary"
-                android:textSize="22sp"
-                android:textStyle="bold" />
+        </ScrollView>
 
-            <!-- Empty state subtitle -->
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="10dp"
-                android:text="Add birthdays, anniversaries,\nor special milestones"
-                android:textColor="@color/menu_text_secondary"
-                android:textSize="14sp"
-                android:gravity="center"
-                android:lineSpacingExtra="3dp" />
-
-            <!-- Add First Event button -->
-            <TextView
-                android:id="@+id/addFirstEventButton"
-                android:layout_width="wrap_content"
-                android:layout_height="48dp"
-                android:layout_marginTop="32dp"
-                android:gravity="center"
-                android:paddingStart="28dp"
-                android:paddingEnd="28dp"
-                android:background="@drawable/bg_event_pill_orange"
-                android:text="+ Add First Event"
-                android:textColor="@color/black"
-                android:textSize="15sp"
-                android:textStyle="bold" />
-
-        </LinearLayout>
-
-    </ScrollView>
+    </FrameLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

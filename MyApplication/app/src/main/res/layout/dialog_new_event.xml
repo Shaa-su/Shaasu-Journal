@@ -15,6 +15,7 @@
         android:gravity="center_vertical">
 
         <TextView
+            android:id="@+id/dialogTitle"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
@@ -206,6 +207,14 @@
             android:tint="#22FFFFFF"
             android:contentDescription="Background" />
 
+        <!-- Scrim preview for opacity slider -->
+        <View
+            android:id="@+id/scrimPreview"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="#000000"
+            android:alpha="0.4" />
+
         <LinearLayout
             android:id="@+id/uploadOverlay"
             android:layout_width="wrap_content"
@@ -229,6 +238,44 @@
                 android:textSize="12sp" />
         </LinearLayout>
     </FrameLayout>
+
+    <!-- Overlay opacity slider -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Overlay"
+            android:textColor="@color/menu_text_secondary"
+            android:textSize="12sp"
+            android:layout_marginEnd="10dp" />
+
+        <SeekBar
+            android:id="@+id/overlaySlider"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:max="100"
+            android:progress="40"
+            android:maxHeight="4dp"
+            android:minHeight="4dp" />
+
+        <TextView
+            android:id="@+id/overlayValue"
+            android:layout_width="32dp"
+            android:layout_height="wrap_content"
+            android:text="40%"
+            android:textColor="@color/event_accent"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:gravity="end"
+            android:layout_marginStart="8dp" />
+    </LinearLayout>
 
     <!-- Notify on the day -->
     <LinearLayout

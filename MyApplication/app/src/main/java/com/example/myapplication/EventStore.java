@@ -45,11 +45,14 @@ public final class EventStore {
         public final int month; // 0-11
         public final int day;
         public final boolean repeatYearly;
-        public final boolean notifyOnDay;
+        public boolean notifyOnDay;
+        public String backgroundUri; // nullable
+        public int overlayOpacity; // 0-100
         public final long createdAtMillis;
 
         public EventItem(String id, String title, String note, int year, int month, int day,
-                         boolean repeatYearly, boolean notifyOnDay, long createdAtMillis) {
+                         boolean repeatYearly, boolean notifyOnDay, String backgroundUri,
+                         int overlayOpacity, long createdAtMillis) {
             this.id = id;
             this.title = title;
             this.note = note;
@@ -58,6 +61,8 @@ public final class EventStore {
             this.day = day;
             this.repeatYearly = repeatYearly;
             this.notifyOnDay = notifyOnDay;
+            this.backgroundUri = backgroundUri;
+            this.overlayOpacity = overlayOpacity;
             this.createdAtMillis = createdAtMillis;
         }
 
@@ -71,12 +76,15 @@ public final class EventStore {
             obj.put("day", day);
             obj.put("repeatYearly", repeatYearly);
             obj.put("notifyOnDay", notifyOnDay);
+            obj.put("backgroundUri", backgroundUri != null ? backgroundUri : "");
+            obj.put("overlayOpacity", overlayOpacity);
             obj.put("createdAtMillis", createdAtMillis);
             return obj;
         }
 
         static EventItem fromJson(JSONObject obj) throws Exception {
             if (obj == null) return null;
+            String bgUri = obj.optString("backgroundUri", "");
             return new EventItem(
                     obj.optString("id", UUID.randomUUID().toString()),
                     obj.optString("title", ""),
@@ -86,6 +94,8 @@ public final class EventStore {
                     obj.optInt("day", 1),
                     obj.optBoolean("repeatYearly", false),
                     obj.optBoolean("notifyOnDay", false),
+                    bgUri.isEmpty() ? null : bgUri,
+                    obj.optInt("overlayOpacity", 40),
                     obj.optLong("createdAtMillis", System.currentTimeMillis())
             );
         }
