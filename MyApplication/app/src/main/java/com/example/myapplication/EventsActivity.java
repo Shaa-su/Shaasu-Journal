@@ -308,9 +308,19 @@ public class EventsActivity extends AppCompatActivity {
         String dateStr = dateFmt.format(eventCal.getTime());
         if (dateTextView != null) dateTextView.setText(dateStr);
 
-        // Yearly chip
+        // Repeat type chip
         if (yearlyChip != null) {
-            yearlyChip.setVisibility(event.repeatYearly ? View.VISIBLE : View.GONE);
+            yearlyChip.setVisibility(View.VISIBLE);
+            if (event.repeatYearly) {
+                yearlyChip.setText("Yearly");
+                yearlyChip.setTextColor(getColor(R.color.menu_text_primary));
+                yearlyChip.setCompoundDrawableTintList(android.content.res.ColorStateList.valueOf(getColor(R.color.menu_text_primary)));
+            } else {
+                yearlyChip.setText("Once");
+                yearlyChip.setTextColor(getColor(R.color.menu_text_primary));
+                yearlyChip.setAlpha(0.8f);
+                yearlyChip.setCompoundDrawableTintList(android.content.res.ColorStateList.valueOf(getColor(R.color.menu_text_primary)));
+            }
         }
 
         // Alert chip — reflects actual state (master toggle + event setting)
@@ -547,6 +557,7 @@ public class EventsActivity extends AppCompatActivity {
             eventMonth = now.get(java.util.Calendar.MONTH);
             eventDay = now.get(java.util.Calendar.DAY_OF_MONTH);
             overlayOpacity = 40;
+            selectedBackgroundUri = null; // Reset background for new events
         }
 
         if (monthSelector != null) monthSelector.setText(MONTH_NAMES[eventMonth]);
