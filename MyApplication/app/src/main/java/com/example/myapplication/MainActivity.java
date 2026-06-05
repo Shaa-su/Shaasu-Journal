@@ -144,7 +144,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void handleVault() {
-        Intent intent = new Intent(MainActivity.this, VaultActivity.class);
+        Intent intent = new Intent(MainActivity.this, VaultPinActivity.class);
         startActivity(intent);
     }
 

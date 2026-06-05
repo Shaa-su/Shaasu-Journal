@@ -1,0 +1,376 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/menu_bg"
+    android:orientation="vertical"
+    android:gravity="center_horizontal"
+    android:paddingLeft="32dp"
+    android:paddingRight="32dp"
+    android:paddingTop="48dp"
+    android:paddingBottom="24dp">
+
+    <!-- Top spacer -->
+    <Space
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="0.8" />
+
+    <!-- Security badge: lock icon -->
+    <LinearLayout
+        android:layout_width="64dp"
+        android:layout_height="64dp"
+        android:gravity="center"
+        android:background="@drawable/bg_pin_badge">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="🔒"
+            android:textSize="28sp" />
+    </LinearLayout>
+
+    <!-- "Enter your PIN" title -->
+    <TextView
+        android:id="@+id/pinTitleText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="20dp"
+        android:text="Enter your PIN"
+        android:textColor="@color/menu_text_primary"
+        android:textSize="20sp"
+        android:textStyle="bold" />
+
+    <!-- Subtitle -->
+    <TextView
+        android:id="@+id/pinSubtitleText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:text="Unlock to access your saved passwords"
+        android:textColor="@color/menu_text_secondary"
+        android:textSize="13sp" />
+
+    <!-- PIN dot indicators -->
+    <LinearLayout
+        android:id="@+id/pinDotsContainer"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="28dp"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:measureWithLargestChild="true">
+
+        <ImageView
+            android:id="@+id/pinDot0"
+            android:layout_width="12dp"
+            android:layout_height="12dp"
+            android:layout_marginStart="0dp"
+            android:layout_marginEnd="6dp"
+            android:src="@drawable/bg_pin_dot_empty"
+            android:contentDescription="PIN digit 1" />
+
+        <ImageView
+            android:id="@+id/pinDot1"
+            android:layout_width="12dp"
+            android:layout_height="12dp"
+            android:layout_marginStart="6dp"
+            android:layout_marginEnd="6dp"
+            android:src="@drawable/bg_pin_dot_empty"
+            android:contentDescription="PIN digit 2" />
+
+        <ImageView
+            android:id="@+id/pinDot2"
+            android:layout_width="12dp"
+            android:layout_height="12dp"
+            android:layout_marginStart="6dp"
+            android:layout_marginEnd="6dp"
+            android:src="@drawable/bg_pin_dot_empty"
+            android:contentDescription="PIN digit 3" />
+
+        <ImageView
+            android:id="@+id/pinDot3"
+            android:layout_width="12dp"
+            android:layout_height="12dp"
+            android:layout_marginStart="6dp"
+            android:layout_marginEnd="6dp"
+            android:src="@drawable/bg_pin_dot_empty"
+            android:contentDescription="PIN digit 4" />
+
+        <ImageView
+            android:id="@+id/pinDot4"
+            android:layout_width="12dp"
+            android:layout_height="12dp"
+            android:layout_marginStart="6dp"
+            android:layout_marginEnd="6dp"
+            android:src="@drawable/bg_pin_dot_empty"
+            android:contentDescription="PIN digit 5" />
+
+        <ImageView
+            android:id="@+id/pinDot5"
+            android:layout_width="12dp"
+            android:layout_height="12dp"
+            android:layout_marginStart="6dp"
+            android:layout_marginEnd="0dp"
+            android:src="@drawable/bg_pin_dot_empty"
+            android:contentDescription="PIN digit 6" />
+    </LinearLayout>
+
+    <!-- Error message -->
+    <TextView
+        android:id="@+id/pinErrorText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:text="Wrong PIN. Try again."
+        android:textColor="#FFFF4444"
+        android:textSize="13sp"
+        android:visibility="gone" />
+
+    <!-- Spacer before keypad -->
+    <Space
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="0.3" />
+
+    <!-- Numeric keypad grid -->
+    <GridLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:columnCount="3"
+        android:rowCount="4"
+        android:alignmentMode="alignMargins"
+        android:columnOrderPreserved="true">
+
+        <!-- Row 1: 1 2 3 -->
+        <TextView
+            android:id="@+id/pinKey1"
+            android:layout_width="0dp"
+            android:layout_height="58dp"
+            android:layout_columnWeight="1"
+            android:layout_rowWeight="1"
+            android:layout_margin="5dp"
+            android:gravity="center"
+            android:background="@drawable/bg_pin_key"
+            android:text="1"
+            android:textColor="@color/menu_text_primary"
+            android:textSize="22sp"
+            android:textStyle="bold"
+            android:clickable="true"
+            android:focusable="true" />
+
+        <TextView
+            android:id="@+id/pinKey2"
+            android:layout_width="0dp"
+            android:layout_height="58dp"
+            android:layout_columnWeight="1"
+            android:layout_rowWeight="1"
+            android:layout_margin="5dp"
+            android:gravity="center"
+            android:background="@drawable/bg_pin_key"
+            android:text="2"
+            android:textColor="@color/menu_text_primary"
+            android:textSize="22sp"
+            android:textStyle="bold"
+            android:clickable="true"
+            android:focusable="true" />
+
+        <TextView
+            android:id="@+id/pinKey3"
+            android:layout_width="0dp"
+            android:layout_height="58dp"
+            android:layout_columnWeight="1"
+            android:layout_rowWeight="1"
+            android:layout_margin="5dp"
+            android:gravity="center"
+            android:background="@drawable/bg_pin_key"
+            android:text="3"
+            android:textColor="@color/menu_text_primary"
+            android:textSize="22sp"
+            android:textStyle="bold"
+            android:clickable="true"
+            android:focusable="true" />
+
+        <!-- Row 2: 4 5 6 -->
+        <TextView
+            android:id="@+id/pinKey4"
+            android:layout_width="0dp"
+            android:layout_height="58dp"
+            android:layout_columnWeight="1"
+            android:layout_rowWeight="1"
+            android:layout_margin="5dp"
+            android:gravity="center"
+            android:background="@drawable/bg_pin_key"
+            android:text="4"
+            android:textColor="@color/menu_text_primary"
+            android:textSize="22sp"
+            android:textStyle="bold"
+            android:clickable="true"
+            android:focusable="true" />
+
+        <TextView
+            android:id="@+id/pinKey5"
+            android:layout_width="0dp"
+            android:layout_height="58dp"
+            android:layout_columnWeight="1"
+            android:layout_rowWeight="1"
+            android:layout_margin="5dp"
+            android:gravity="center"
+            android:background="@drawable/bg_pin_key"
+            android:text="5"
+            android:textColor="@color/menu_text_primary"
+            android:textSize="22sp"
+            android:textStyle="bold"
+            android:clickable="true"
+            android:focusable="true" />
+
+        <TextView
+            android:id="@+id/pinKey6"
+            android:layout_width="0dp"
+            android:layout_height="58dp"
+            android:layout_columnWeight="1"
+            android:layout_rowWeight="1"
+            android:layout_margin="5dp"
+            android:gravity="center"
+            android:background="@drawable/bg_pin_key"
+            android:text="6"
+            android:textColor="@color/menu_text_primary"
+            android:textSize="22sp"
+            android:textStyle="bold"
+            android:clickable="true"
+            android:focusable="true" />
+
+        <!-- Row 3: 7 8 9 -->
+        <TextView
+            android:id="@+id/pinKey7"
+            android:layout_width="0dp"
+            android:layout_height="58dp"
+            android:layout_columnWeight="1"
+            android:layout_rowWeight="1"
+            android:layout_margin="5dp"
+            android:gravity="center"
+            android:background="@drawable/bg_pin_key"
+            android:text="7"
+            android:textColor="@color/menu_text_primary"
+            android:textSize="22sp"
+            android:textStyle="bold"
+            android:clickable="true"
+            android:focusable="true" />
+
+        <TextView
+            android:id="@+id/pinKey8"
+            android:layout_width="0dp"
+            android:layout_height="58dp"
+            android:layout_columnWeight="1"
+            android:layout_rowWeight="1"
+            android:layout_margin="5dp"
+            android:gravity="center"
+            android:background="@drawable/bg_pin_key"
+            android:text="8"
+            android:textColor="@color/menu_text_primary"
+            android:textSize="22sp"
+            android:textStyle="bold"
+            android:clickable="true"
+            android:focusable="true" />
+
+        <TextView
+            android:id="@+id/pinKey9"
+            android:layout_width="0dp"
+            android:layout_height="58dp"
+            android:layout_columnWeight="1"
+            android:layout_rowWeight="1"
+            android:layout_margin="5dp"
+            android:gravity="center"
+            android:background="@drawable/bg_pin_key"
+            android:text="9"
+            android:textColor="@color/menu_text_primary"
+            android:textSize="22sp"
+            android:textStyle="bold"
+            android:clickable="true"
+            android:focusable="true" />
+
+        <!-- Row 4: [empty]  0  backspace -->
+        <Space
+            android:layout_width="0dp"
+            android:layout_height="58dp"
+            android:layout_columnWeight="1"
+            android:layout_rowWeight="1"
+            android:layout_margin="5dp" />
+
+        <TextView
+            android:id="@+id/pinKey0"
+            android:layout_width="0dp"
+            android:layout_height="58dp"
+            android:layout_columnWeight="1"
+            android:layout_rowWeight="1"
+            android:layout_margin="5dp"
+            android:gravity="center"
+            android:background="@drawable/bg_pin_key"
+            android:text="0"
+            android:textColor="@color/menu_text_primary"
+            android:textSize="22sp"
+            android:textStyle="bold"
+            android:clickable="true"
+            android:focusable="true" />
+
+        <TextView
+            android:id="@+id/pinKeyBack"
+            android:layout_width="0dp"
+            android:layout_height="58dp"
+            android:layout_columnWeight="1"
+            android:layout_rowWeight="1"
+            android:layout_margin="5dp"
+            android:gravity="center"
+            android:background="@drawable/bg_pin_key"
+            android:text="⌫"
+            android:textColor="@color/menu_text_primary"
+            android:textSize="20sp"
+            android:clickable="true"
+            android:focusable="true" />
+
+    </GridLayout>
+
+    <!-- Spacer before unlock button -->
+    <Space
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="0.5" />
+
+    <!-- Unlock button -->
+    <TextView
+        android:id="@+id/pinUnlockButton"
+        android:layout_width="match_parent"
+        android:layout_height="50dp"
+        android:gravity="center"
+        android:background="@drawable/bg_pin_unlock"
+        android:text="Unlock"
+        android:textColor="@color/black"
+        android:textSize="15sp"
+        android:textStyle="bold"
+        android:clickable="true"
+        android:focusable="true" />
+
+    <!-- Spacer -->
+    <Space
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="0.3" />
+
+    <!-- Back to Home -->
+    <TextView
+        android:id="@+id/pinBackHome"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="← Back to Home"
+        android:textColor="@color/menu_text_secondary"
+        android:textSize="13sp"
+        android:clickable="true"
+        android:focusable="true" />
+
+    <!-- Bottom spacer -->
+    <Space
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="0.3" />
+
+</LinearLayout>

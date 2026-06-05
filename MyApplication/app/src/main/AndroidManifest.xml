@@ -51,6 +51,11 @@
             android:exported="true" />
 
         <activity
+            android:name=".VaultPinActivity"
+            android:exported="true"
+            android:windowSoftInputMode="adjustPan" />
+
+        <activity
             android:name=".VaultActivity"
             android:exported="true" />
 
