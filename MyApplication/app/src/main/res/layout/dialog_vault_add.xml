@@ -1,0 +1,186 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:overScrollMode="never">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="@drawable/bg_dialog_rounded"
+        android:padding="24dp">
+
+        <!-- Header -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Add to Vault"
+                android:textColor="@color/menu_text_primary"
+                android:textSize="20sp"
+                android:textStyle="bold" />
+
+            <ImageButton
+                android:id="@+id/vaultDialogClose"
+                android:layout_width="34dp"
+                android:layout_height="34dp"
+                android:background="@drawable/bg_event_close_button"
+                android:contentDescription="Close"
+                android:scaleType="center"
+                android:src="@android:drawable/ic_menu_close_clear_cancel"
+                android:tint="@color/menu_text_primary"
+                android:importantForAccessibility="no" />
+        </LinearLayout>
+
+        <!-- LABEL section -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:text="LABEL (OPTIONAL)"
+            android:textColor="@color/menu_text_secondary"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.08" />
+
+        <EditText
+            android:id="@+id/vaultLabelInput"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/bg_event_input"
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp"
+            android:textSize="14sp"
+            android:textColor="@color/menu_text_primary"
+            android:textColorHint="@color/menu_text_secondary"
+            android:hint="e.g. Work Gmail, Personal Gmail..."
+            android:inputType="text"
+            android:maxLines="1" />
+
+        <!-- DETAILS section -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:text="DETAILS"
+            android:textColor="@color/menu_text_secondary"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.08" />
+
+        <!-- Account name field -->
+        <TextView
+            android:id="@+id/vaultAccountLabel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:text="Gmail address"
+            android:textColor="@color/menu_text_secondary"
+            android:textSize="12sp" />
+
+        <EditText
+            android:id="@+id/vaultAccountInput"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:layout_marginTop="4dp"
+            android:background="@drawable/bg_event_input"
+            android:paddingStart="14dp"
+            android:paddingEnd="48dp"
+            android:textSize="14sp"
+            android:textColor="@color/menu_text_primary"
+            android:textColorHint="@color/menu_text_secondary"
+            android:hint="Gmail address"
+            android:inputType="textEmailAddress"
+            android:maxLines="1" />
+
+        <!-- Password field -->
+        <TextView
+            android:id="@+id/vaultPasswordLabel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="Password"
+            android:textColor="@color/menu_text_secondary"
+            android:textSize="12sp" />
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:layout_marginTop="4dp">
+
+            <EditText
+                android:id="@+id/vaultPasswordInput"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@drawable/bg_event_input"
+                android:paddingStart="14dp"
+                android:paddingEnd="48dp"
+                android:textSize="14sp"
+                android:textColor="@color/menu_text_primary"
+                android:textColorHint="@color/menu_text_secondary"
+                android:hint="Password"
+                android:inputType="textPassword"
+                android:maxLines="1" />
+
+            <ImageButton
+                android:id="@+id/vaultPasswordToggle"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:layout_gravity="end|center_vertical"
+                android:layout_marginEnd="6dp"
+                android:background="@drawable/bg_event_close_button"
+                android:contentDescription="Toggle password visibility"
+                android:scaleType="center"
+                android:src="@android:drawable/ic_menu_view"
+                android:tint="#66FFFFFF" />
+        </FrameLayout>
+
+        <!-- Optional field -->
+        <TextView
+            android:id="@+id/vaultOptionalLabel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="Recovery email (optional)"
+            android:textColor="@color/menu_text_secondary"
+            android:textSize="12sp" />
+
+        <EditText
+            android:id="@+id/vaultOptionalInput"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:layout_marginTop="4dp"
+            android:background="@drawable/bg_event_input"
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp"
+            android:textSize="14sp"
+            android:textColor="@color/menu_text_primary"
+            android:textColorHint="@color/menu_text_secondary"
+            android:hint="Recovery email (optional)"
+            android:inputType="textEmailAddress"
+            android:maxLines="1" />
+
+        <!-- Save button -->
+        <TextView
+            android:id="@+id/vaultSaveButton"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:layout_marginTop="22dp"
+            android:gravity="center"
+            android:background="@drawable/bg_vault_pill_purple"
+            android:text="Save to Vault"
+            android:textColor="@color/black"
+            android:textSize="15sp"
+            android:textStyle="bold" />
+
+    </LinearLayout>
+
+</ScrollView>

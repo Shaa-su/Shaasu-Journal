@@ -36,7 +36,7 @@
             android:layout_width="24dp"
             android:layout_height="24dp"
             android:layout_marginStart="10dp"
-            android:src="@android:drawable/ic_lock_idle_lock"
+            android:src="@android:drawable/ic_menu_info_details"
             android:tint="@color/vault_accent"
             app:layout_constraintStart_toEndOf="@+id/backButton"
             app:layout_constraintTop_toTopOf="parent"
@@ -116,14 +116,38 @@
         app:layout_constraintEnd_toEndOf="parent" />
 
     <!-- Main content -->
-    <ScrollView
+    <FrameLayout
         android:layout_width="0dp"
         android:layout_height="0dp"
-        android:fillViewport="true"
         app:layout_constraintTop_toBottomOf="@+id/searchInput"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
+
+        <!-- Entries list -->
+        <ScrollView
+            android:id="@+id/vaultEntriesScroll"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:fillViewport="true"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:id="@+id/vaultEntriesContainer"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp" />
+
+        </ScrollView>
+
+        <!-- Empty state -->
+        <ScrollView
+            android:id="@+id/vaultEmptyState"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:fillViewport="true"
+            android:visibility="visible">
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -143,7 +167,7 @@
                 <ImageView
                     android:layout_width="32dp"
                     android:layout_height="32dp"
-                    android:src="@android:drawable/ic_lock_idle_lock"
+                    android:src="@android:drawable/ic_menu_info_details"
                     android:tint="@color/vault_accent" />
             </LinearLayout>
 
@@ -362,5 +386,7 @@ android:src="@android:drawable/ic_menu_myplaces"
         </LinearLayout>
 
     </ScrollView>
+
+    </FrameLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

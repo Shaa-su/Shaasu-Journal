@@ -1,0 +1,296 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="@drawable/bg_dialog_rounded"
+    android:padding="20dp">
+
+    <!-- Drag handle -->
+    <View
+        android:layout_width="40dp"
+        android:layout_height="4dp"
+        android:layout_gravity="center_horizontal"
+        android:background="@drawable/bg_goals_handle"
+        android:layout_marginBottom="12dp" />
+
+    <!-- Header row -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <!-- Logo -->
+        <LinearLayout
+            android:id="@+id/entryLogoContainer"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:gravity="center"
+            android:background="@drawable/bg_event_card"
+            android:orientation="vertical">
+
+            <ImageView
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:src="@android:drawable/ic_dialog_email"
+                android:tint="#FFFF4444" />
+        </LinearLayout>
+
+        <!-- Title + subtitle -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="12dp"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/entryTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="SU"
+                android:textColor="@color/menu_text_primary"
+                android:textSize="18sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/entrySubtitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:text="Gmail · 3 fields"
+                android:textColor="@color/menu_text_secondary"
+                android:textSize="12sp" />
+        </LinearLayout>
+
+        <!-- Collapse arrow -->
+        <ImageView
+            android:id="@+id/entryCollapseArrow"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:src="@android:drawable/arrow_up_float"
+            android:tint="@color/menu_text_secondary" />
+    </LinearLayout>
+
+    <!-- Divider -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginTop="14dp"
+        android:alpha="0.12"
+        android:background="@color/menu_text_secondary" />
+
+    <!-- Field 1: Gmail Address -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="14dp"
+        android:orientation="vertical">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/entryField1Label"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="GMAIL ADDRESS"
+                    android:textColor="@color/menu_text_secondary"
+                    android:textSize="10sp"
+                    android:textStyle="bold"
+                    android:letterSpacing="0.06" />
+
+                <TextView
+                    android:id="@+id/entryField1Value"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="SU@gmail.com"
+                    android:textColor="@color/menu_text_primary"
+                    android:textSize="14sp" />
+            </LinearLayout>
+
+            <!-- Copy button -->
+            <ImageButton
+                android:id="@+id/entryField1Copy"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:background="@drawable/bg_event_close_button"
+                android:contentDescription="Copy"
+                android:scaleType="center"
+                android:src="@android:drawable/ic_menu_agenda"
+                android:tint="@color/menu_text_secondary" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- Divider -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginTop="14dp"
+        android:alpha="0.12"
+        android:background="@color/menu_text_secondary" />
+
+    <!-- Field 2: Password -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="14dp"
+        android:orientation="vertical">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/entryField2Label"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="PASSWORD"
+                    android:textColor="@color/menu_text_secondary"
+                    android:textSize="10sp"
+                    android:textStyle="bold"
+                    android:letterSpacing="0.06" />
+
+                <TextView
+                    android:id="@+id/entryField2Value"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="\u2022 \u2022 \u2022"
+                    android:textColor="@color/menu_text_primary"
+                    android:textSize="14sp" />
+            </LinearLayout>
+
+            <!-- Visibility toggle -->
+            <ImageButton
+                android:id="@+id/entryPasswordToggle"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:background="@drawable/bg_event_close_button"
+                android:contentDescription="Toggle password"
+                android:scaleType="center"
+                android:src="@android:drawable/ic_menu_view"
+                android:tint="@color/menu_text_secondary"
+                android:layout_marginEnd="6dp" />
+
+            <!-- Copy button -->
+            <ImageButton
+                android:id="@+id/entryField2Copy"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:background="@drawable/bg_event_close_button"
+                android:contentDescription="Copy"
+                android:scaleType="center"
+                android:src="@android:drawable/ic_menu_agenda"
+                android:tint="@color/menu_text_secondary" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- Divider -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginTop="14dp"
+        android:alpha="0.12"
+        android:background="@color/menu_text_secondary" />
+
+    <!-- Field 3: Recovery email -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="14dp"
+        android:orientation="vertical">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/entryField3Label"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="RECOVERY EMAIL"
+                    android:textColor="@color/menu_text_secondary"
+                    android:textSize="10sp"
+                    android:textStyle="bold"
+                    android:letterSpacing="0.06" />
+
+                <TextView
+                    android:id="@+id/entryField3Value"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="dun@gmail.com"
+                    android:textColor="@color/menu_text_primary"
+                    android:textSize="14sp" />
+            </LinearLayout>
+
+            <!-- Copy button -->
+            <ImageButton
+                android:id="@+id/entryField3Copy"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:background="@drawable/bg_event_close_button"
+                android:contentDescription="Copy"
+                android:scaleType="center"
+                android:src="@android:drawable/ic_menu_agenda"
+                android:tint="@color/menu_text_secondary" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- Delete button -->
+    <LinearLayout
+        android:id="@+id/entryDeleteLayout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="20dp"
+        android:orientation="horizontal"
+        android:gravity="start|center_vertical"
+        android:clickable="true"
+        android:focusable="true">
+
+        <ImageView
+            android:id="@+id/entryDeleteIcon"
+            android:layout_width="18dp"
+            android:layout_height="18dp"
+            android:src="@android:drawable/ic_menu_delete"
+            android:tint="#FFFF4444" />
+
+        <TextView
+            android:id="@+id/entryDeleteText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:text="Delete this entry"
+            android:textColor="#FFFF4444"
+            android:textSize="13sp" />
+    </LinearLayout>
+
+</LinearLayout>
