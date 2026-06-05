@@ -53,10 +53,10 @@ public class VaultActivity extends AppCompatActivity {
             backButton.setOnClickListener(v -> finish());
         }
 
-        // + Add
+        // + Add — shows category picker first
         addButton = findViewById(R.id.addButton);
         if (addButton != null) {
-            addButton.setOnClickListener(v -> showVaultAddDialog(null));
+            addButton.setOnClickListener(v -> showCategoryPicker());
         }
 
         // Category cards (matches activity_vault.xml IDs)
@@ -152,6 +152,61 @@ public class VaultActivity extends AppCompatActivity {
         // Tap to show entry detail
         row.setOnClickListener(v -> showVaultEntryDialog(
                 item.id, item.category, item.account, item.password, item.optional));
+    }
+
+    private void showCategoryPicker() {
+        final String[] categories = {"Gmail", "Instagram", "Game Accounts", "Credit Card", "Other Accounts", "Secret Note"};
+        final int[] icons = {
+                android.R.drawable.ic_dialog_email,      // Gmail
+                android.R.drawable.ic_menu_camera,        // Instagram
+                android.R.drawable.ic_menu_myplaces,      // Game Accounts
+                android.R.drawable.ic_menu_manage,        // Credit Card
+                android.R.drawable.ic_menu_compass,       // Other Accounts
+                android.R.drawable.ic_menu_edit           // Secret Note
+        };
+
+        View container = LayoutInflater.from(this).inflate(R.layout.dialog_vault_category_picker, null, false);
+        LinearLayout listLayout = container.findViewById(R.id.categoryList);
+        ImageButton closeBtn = container.findViewById(R.id.categoryPickerClose);
+
+        if (listLayout == null || closeBtn == null) {
+            // Fallback to simple dialog if layout not found
+            AlertDialog.Builder builder = new AlertDialog.Builder(this, R.style.ThemeOverlay_App_DarkDialog);
+            builder.setTitle("Choose type");
+            builder.setItems(categories, (dialog, which) -> showVaultAddDialog(categories[which]));
+            builder.setNegativeButton("Cancel", null);
+            builder.show();
+            return;
+        }
+
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setView(container)
+                .create();
+        dialog.setOnShowListener(d -> {
+            if (dialog.getWindow() != null) {
+                dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+                dialog.getWindow().setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            }
+        });
+
+        for (int i = 0; i < categories.length; i++) {
+            View row = LayoutInflater.from(this).inflate(R.layout.item_vault_category_option, listLayout, false);
+            ImageView iconView = row.findViewById(R.id.catOptionIcon);
+            TextView nameView = row.findViewById(R.id.catOptionName);
+
+            if (iconView != null) iconView.setImageResource(icons[i]);
+            if (nameView != null) nameView.setText(categories[i]);
+
+            final int index = i;
+            row.setOnClickListener(v -> {
+                dialog.dismiss();
+                showVaultAddDialog(categories[index]);
+            });
+            listLayout.addView(row);
+        }
+
+        closeBtn.setOnClickListener(v -> dialog.dismiss());
+        dialog.show();
     }
 
     private void showVaultAddDialog(String category) {

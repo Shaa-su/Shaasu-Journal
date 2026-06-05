@@ -1,9 +1,12 @@
 package com.example.myapplication;
 
+import android.Manifest;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.provider.MediaStore;
 import android.view.LayoutInflater;
@@ -18,6 +21,8 @@ import android.widget.Toast;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.view.ViewCompat;
@@ -51,6 +56,9 @@ public class EventsActivity extends AppCompatActivity {
     private int eventMonth; // 0-11
     private int eventDay;
 
+    // Notification permission launcher
+    private ActivityResultLauncher<String> notificationPermissionLauncher;
+
     // Master alerts toggle
     private boolean alertsEnabled = false;
 
@@ -80,6 +88,18 @@ public class EventsActivity extends AppCompatActivity {
             ViewCompat.requestApplyInsets(root);
         }
 
+        // Notification permission launcher
+        notificationPermissionLauncher = registerForActivityResult(
+                new ActivityResultContracts.RequestPermission(),
+                granted -> {
+                    if (granted) {
+                        Toast.makeText(this, "Notification permission granted", Toast.LENGTH_SHORT).show();
+                    } else {
+                        Toast.makeText(this, "Notification permission denied — alerts won't work", Toast.LENGTH_LONG).show();
+                    }
+                }
+        );
+
         // Back button
         View backButton = findViewById(R.id.backButton);
         if (backButton != null) {
@@ -106,13 +126,19 @@ public class EventsActivity extends AppCompatActivity {
         // + New
         newButton = findViewById(R.id.newButton);
         if (newButton != null) {
-            newButton.setOnClickListener(v -> showNewEventDialog());
+            newButton.setOnClickListener(v -> {
+                requestNotificationPermissionIfNeeded();
+                showNewEventDialog();
+            });
         }
 
         // + Add First Event
         addFirstEventButton = findViewById(R.id.addFirstEventButton);
         if (addFirstEventButton != null) {
-            addFirstEventButton.setOnClickListener(v -> showNewEventDialog());
+            addFirstEventButton.setOnClickListener(v -> {
+                requestNotificationPermissionIfNeeded();
+                showNewEventDialog();
+            });
         }
 
         // Load and display events
@@ -510,8 +536,34 @@ public class EventsActivity extends AppCompatActivity {
         return Math.round(dp * getResources().getDisplayMetrics().density);
     }
 
+    private boolean hasNotificationPermission() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+            return true; // No runtime permission needed below Android 13
+        }
+        return checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
+                == PackageManager.PERMISSION_GRANTED;
+    }
+
+    private void requestNotificationPermissionIfNeeded() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+                && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
+                != PackageManager.PERMISSION_GRANTED) {
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS);
+        }
+    }
+
     private void handleEnableAlerts() {
-        alertsEnabled = !alertsEnabled;
+        boolean turningOn = !alertsEnabled;
+
+        // If turning on and no permission yet, request it first
+        if (turningOn && !hasNotificationPermission()) {
+            requestNotificationPermissionIfNeeded();
+            // After granting, the user will need to tap again
+            Toast.makeText(this, "Please grant notification permission first", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        alertsEnabled = turningOn;
         // Persist
         getSharedPreferences("events_prefs", MODE_PRIVATE)
                 .edit()
@@ -980,6 +1032,10 @@ public class EventsActivity extends AppCompatActivity {
 
             // Schedule notification only if both master toggle AND event toggle are ON
             if (notifyOnDay && alertsEnabled) {
+                // Request notification permission if not granted yet
+                if (!hasNotificationPermission()) {
+                    requestNotificationPermissionIfNeeded();
+                }
                 long triggerAt = EventStore.computeTriggerAtMillis(event);
                 String dateKey = String.format("%04d-%02d-%02d", event.year, event.month + 1, event.day);
 
