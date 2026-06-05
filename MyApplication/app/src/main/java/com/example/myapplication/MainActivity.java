@@ -217,7 +217,16 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
 
-            if (storiesJson.length() == 0 && remindersJson.length() == 0 && eventsJson.length() == 0) {
+            org.json.JSONArray vaultJson = new org.json.JSONArray();
+            for (VaultStore.VaultItem v : VaultStore.getAll(this)) {
+                if (v != null) {
+                    try {
+                        vaultJson.put(v.toJson());
+                    } catch (Exception ignored) {}
+                }
+            }
+
+            if (storiesJson.length() == 0 && remindersJson.length() == 0 && eventsJson.length() == 0 && vaultJson.length() == 0) {
                 Toast.makeText(this, "No data to export", Toast.LENGTH_SHORT).show();
                 return;
             }
@@ -232,6 +241,9 @@ public class MainActivity extends AppCompatActivity {
             }
             if (eventsJson.length() > 0) {
                 root.put("events", eventsJson);
+            }
+            if (vaultJson.length() > 0) {
+                root.put("vault", vaultJson);
             }
 
             JSONObject envelope = ExportCrypto.encryptToEnvelope(root.toString(), password);
@@ -297,6 +309,7 @@ public class MainActivity extends AppCompatActivity {
         int importedStories = 0;
         int importedReminders = 0;
         int importedEventsCount = 0;
+        int importedVaultCount = 0;
 
         if (root.has("stories")) {
             JSONObject storiesObject = root.getJSONObject("stories");
@@ -368,7 +381,23 @@ public class MainActivity extends AppCompatActivity {
             }
         }
 
-        return new ImportResult(importedStories, importedReminders, importedEventsCount);
+        if (root.has("vault")) {
+            org.json.JSONArray vaultArray = root.getJSONArray("vault");
+            java.util.List<VaultStore.VaultItem> vaultItems = new java.util.ArrayList<>();
+            for (int i = 0; i < vaultArray.length(); i++) {
+                VaultStore.VaultItem v = VaultStore.VaultItem.fromJson(vaultArray.getJSONObject(i));
+                if (v != null) {
+                    vaultItems.add(v);
+                }
+            }
+            VaultStore.clear(this);
+            for (VaultStore.VaultItem v : vaultItems) {
+                VaultStore.put(this, v);
+                importedVaultCount++;
+            }
+        }
+
+        return new ImportResult(importedStories, importedReminders, importedEventsCount, importedVaultCount);
     }
 
     private String formatImportMessage(ImportResult result) {
@@ -378,6 +407,7 @@ public class MainActivity extends AppCompatActivity {
         sb.append(result.stories).append(" stories");
         if (result.reminders > 0) sb.append(", ").append(result.reminders).append(" reminders");
         sb.append(", ").append(result.events).append(" events");
+        if (result.vault > 0) sb.append(", ").append(result.vault).append(" vault entries");
         sb.append("!");
         return sb.toString();
     }
@@ -386,11 +416,13 @@ public class MainActivity extends AppCompatActivity {
         final int stories;
         final int reminders;
         final int events;
+        final int vault;
 
-        ImportResult(int stories, int reminders, int events) {
+        ImportResult(int stories, int reminders, int events, int vault) {
             this.stories = stories;
             this.reminders = reminders;
             this.events = events;
+            this.vault = vault;
         }
     }
 

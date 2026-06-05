@@ -168,6 +168,59 @@
             android:inputType="textEmailAddress"
             android:maxLines="1" />
 
+        <!-- Image section (visible for Secret Notes) -->
+        <LinearLayout
+            android:id="@+id/vaultImageSection"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="IMAGE (OPTIONAL)"
+                android:textColor="@color/menu_text_secondary"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:letterSpacing="0.08" />
+
+            <TextView
+                android:id="@+id/vaultImagePickButton"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:layout_marginTop="6dp"
+                android:gravity="center"
+                android:background="@drawable/bg_event_input"
+                android:text="+ Choose image"
+                android:textColor="@color/vault_accent"
+                android:textSize="13sp"
+                android:clickable="true"
+                android:focusable="true" />
+
+            <ImageView
+                android:id="@+id/vaultImagePreview"
+                android:layout_width="match_parent"
+                android:layout_height="140dp"
+                android:layout_marginTop="8dp"
+                android:scaleType="centerCrop"
+                android:visibility="gone"
+                android:background="@drawable/bg_event_input" />
+
+            <TextView
+                android:id="@+id/vaultImageRemove"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="Remove image"
+                android:textColor="@color/vault_accent"
+                android:textSize="12sp"
+                android:visibility="gone"
+                android:clickable="true"
+                android:focusable="true" />
+        </LinearLayout>
+
         <!-- Save button -->
         <TextView
             android:id="@+id/vaultSaveButton"

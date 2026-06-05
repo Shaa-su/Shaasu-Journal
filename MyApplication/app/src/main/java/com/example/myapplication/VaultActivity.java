@@ -2,10 +2,16 @@ package com.example.myapplication;
 
 import android.content.ClipData;
 import android.content.ClipboardManager;
+import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
+import android.net.Uri;
 import android.os.Bundle;
+import android.provider.MediaStore;
 import android.text.InputType;
+import android.util.Base64;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -16,11 +22,16 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.core.graphics.Insets;
+
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
 
 public class VaultActivity extends AppCompatActivity {
 
@@ -31,6 +42,12 @@ public class VaultActivity extends AppCompatActivity {
     private View cardCreditCard;
     private View cardWifi;
     private View cardSecretNote;
+
+    // Image picker for Secret Notes
+    private ActivityResultLauncher<String> imagePickerLauncher;
+    private Uri selectedImageUri;
+    private String encodedImageBase64;
+    private AlertDialog currentAddDialog;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -46,6 +63,19 @@ public class VaultActivity extends AppCompatActivity {
             });
             ViewCompat.requestApplyInsets(root);
         }
+
+        // Image picker for Secret Notes
+        imagePickerLauncher = registerForActivityResult(
+                new ActivityResultContracts.GetContent(),
+                uri -> {
+                    if (uri != null) {
+                        selectedImageUri = uri;
+                        encodedImageBase64 = encodeImageToBase64(uri);
+                        // Update preview if dialog is showing
+                        updateImagePreviewInDialog();
+                    }
+                }
+        );
 
         // Back button
         View backButton = findViewById(R.id.backButton);
@@ -124,29 +154,23 @@ public class VaultActivity extends AppCompatActivity {
         }
         if (subtitleView != null) subtitleView.setText(item.category);
 
-        // Icon tint by category
+        // Icon tint by category — all using cyan theme
         if (iconImage != null) {
             int iconRes = android.R.drawable.ic_dialog_email;
-            int tintColor = 0xFFFF4444;
             String cat = item.category != null ? item.category.toLowerCase(java.util.Locale.US) : "";
             if (cat.contains("instagram")) {
                 iconRes = android.R.drawable.ic_menu_camera;
-                tintColor = 0xFFFFD700;
             } else if (cat.contains("game")) {
                 iconRes = android.R.drawable.ic_menu_compass;
-                tintColor = 0xFF4488FF;
             } else if (cat.contains("credit") || cat.contains("card")) {
                 iconRes = android.R.drawable.ic_menu_my_calendar;
-                tintColor = 0xFF4488FF;
             } else if (cat.contains("other")) {
                 iconRes = android.R.drawable.ic_menu_myplaces;
-                tintColor = 0xFF22C55E;
             } else if (cat.contains("secret") || cat.contains("note")) {
                 iconRes = android.R.drawable.ic_menu_edit;
-                tintColor = 0xFFFF4444;
             }
             iconImage.setImageResource(iconRes);
-            iconImage.setColorFilter(tintColor);
+            iconImage.setColorFilter(getColor(R.color.vault_accent));
         }
 
         // Tap to show entry detail
@@ -261,6 +285,38 @@ public class VaultActivity extends AppCompatActivity {
             if (optionalLabel != null) optionalLabel.setText(optionalLabelText);
         }
 
+        // Image section (Secret Notes only)
+        LinearLayout imageSection = container.findViewById(R.id.vaultImageSection);
+        TextView imagePickButton = container.findViewById(R.id.vaultImagePickButton);
+        ImageView imagePreview = container.findViewById(R.id.vaultImagePreview);
+        TextView imageRemove = container.findViewById(R.id.vaultImageRemove);
+
+        boolean isNote = "Secret Note".equals(category);
+        if (imageSection != null) {
+            imageSection.setVisibility(isNote ? View.VISIBLE : View.GONE);
+        }
+        // Reset image state for a fresh dialog
+        selectedImageUri = null;
+        encodedImageBase64 = null;
+
+        if (isNote && imagePickButton != null) {
+            imagePickButton.setOnClickListener(v -> {
+                imagePickerLauncher.launch("image/*");
+            });
+        }
+        if (isNote && imageRemove != null) {
+            imageRemove.setOnClickListener(v -> {
+                selectedImageUri = null;
+                encodedImageBase64 = null;
+                if (imagePreview != null) {
+                    imagePreview.setVisibility(View.GONE);
+                    imagePreview.setImageDrawable(null);
+                }
+                if (imageRemove != null) imageRemove.setVisibility(View.GONE);
+                if (imagePickButton != null) imagePickButton.setText("+ Choose image");
+            });
+        }
+
         final boolean[] passwordVisible = {false};
         if (passwordToggle != null && passwordInput != null) {
             passwordToggle.setOnClickListener(v -> {
@@ -274,6 +330,7 @@ public class VaultActivity extends AppCompatActivity {
         AlertDialog dialog = new AlertDialog.Builder(this)
                 .setView(container)
                 .create();
+        currentAddDialog = dialog;
         dialog.setOnShowListener(d -> {
             if (dialog.getWindow() != null) {
                 dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
@@ -302,6 +359,7 @@ public class VaultActivity extends AppCompatActivity {
                     account,
                     pass,
                     optValue,
+                    encodedImageBase64,
                     System.currentTimeMillis()
             );
             VaultStore.put(this, vaultItem);
@@ -427,6 +485,32 @@ public class VaultActivity extends AppCompatActivity {
             field3Copy.setOnClickListener(v -> copyToClipboard(optional, isNote ? "Tags copied" : "Copied"));
         }
 
+        // Attached image display (Secret Notes with images)
+        View imageSection = container.findViewById(R.id.entryImageSection);
+        ImageView imageDisplay = container.findViewById(R.id.entryImageDisplay);
+        // We need the item's imageBase64 — fetch it from store
+        VaultStore.VaultItem fullItem = null;
+        if (itemId != null) {
+            for (VaultStore.VaultItem vi : VaultStore.getAll(this)) {
+                if (vi.id.equals(itemId)) {
+                    fullItem = vi;
+                    break;
+                }
+            }
+        }
+        if (isNote && fullItem != null && fullItem.imageBase64 != null && imageSection != null && imageDisplay != null) {
+            imageSection.setVisibility(View.VISIBLE);
+            try {
+                byte[] decoded = Base64.decode(fullItem.imageBase64, Base64.DEFAULT);
+                Bitmap bmp = BitmapFactory.decodeByteArray(decoded, 0, decoded.length);
+                if (bmp != null) {
+                    imageDisplay.setImageBitmap(bmp);
+                }
+            } catch (Exception e) {
+                imageSection.setVisibility(View.GONE);
+            }
+        }
+
         // Delete
         if (deleteRow != null) {
             deleteRow.setOnClickListener(v -> {
@@ -438,6 +522,55 @@ public class VaultActivity extends AppCompatActivity {
         }
 
         dialog.show();
+    }
+
+    private void updateImagePreviewInDialog() {
+        // Find the add dialog's views to update the preview
+        // The dialog views are found dynamically
+        if (currentAddDialog != null && currentAddDialog.getWindow() != null) {
+            ViewGroup decorView = (ViewGroup) currentAddDialog.getWindow().getDecorView();
+            ImageView preview = decorView.findViewById(R.id.vaultImagePreview);
+            TextView pickBtn = decorView.findViewById(R.id.vaultImagePickButton);
+            TextView removeBtn = decorView.findViewById(R.id.vaultImageRemove);
+            if (preview != null && encodedImageBase64 != null) {
+                try {
+                    byte[] decoded = Base64.decode(encodedImageBase64, Base64.DEFAULT);
+                    Bitmap bmp = BitmapFactory.decodeByteArray(decoded, 0, decoded.length);
+                    if (bmp != null) {
+                        preview.setImageBitmap(bmp);
+                        preview.setVisibility(View.VISIBLE);
+                        if (pickBtn != null) pickBtn.setText("Change image");
+                        if (removeBtn != null) removeBtn.setVisibility(View.VISIBLE);
+                    }
+                } catch (Exception ignored) {}
+            }
+        }
+    }
+
+    private String encodeImageToBase64(Uri imageUri) {
+        if (imageUri == null) return null;
+        try {
+            InputStream is = getContentResolver().openInputStream(imageUri);
+            if (is == null) return null;
+            Bitmap bmp = BitmapFactory.decodeStream(is);
+            is.close();
+            if (bmp == null) return null;
+
+            // Compress to JPEG at 85% quality, max 1024px width
+            int maxWidth = 1024;
+            if (bmp.getWidth() > maxWidth) {
+                float ratio = (float) maxWidth / bmp.getWidth();
+                int newHeight = Math.round(bmp.getHeight() * ratio);
+                bmp = Bitmap.createScaledBitmap(bmp, maxWidth, newHeight, true);
+            }
+
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            bmp.compress(Bitmap.CompressFormat.JPEG, 85, baos);
+            byte[] bytes = baos.toByteArray();
+            return Base64.encodeToString(bytes, Base64.DEFAULT);
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     private void copyToClipboard(String text, String toastMsg) {

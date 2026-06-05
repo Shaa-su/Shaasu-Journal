@@ -34,7 +34,7 @@
                 android:layout_width="24dp"
                 android:layout_height="24dp"
                 android:src="@android:drawable/ic_dialog_email"
-                android:tint="#FFFF4444" />
+                android:tint="@color/vault_accent" />
         </LinearLayout>
 
         <!-- Title + subtitle -->
@@ -265,6 +265,34 @@
         </LinearLayout>
     </LinearLayout>
 
+    <!-- Attached image (for Secret Notes with images) -->
+    <LinearLayout
+        android:id="@+id/entryImageSection"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="ATTACHED IMAGE"
+            android:textColor="@color/menu_text_secondary"
+            android:textSize="10sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.06" />
+
+        <ImageView
+            android:id="@+id/entryImageDisplay"
+            android:layout_width="match_parent"
+            android:layout_height="200dp"
+            android:layout_marginTop="6dp"
+            android:scaleType="fitCenter"
+            android:adjustViewBounds="true"
+            android:background="@drawable/bg_event_input" />
+    </LinearLayout>
+
     <!-- Delete button -->
     <LinearLayout
         android:id="@+id/entryDeleteLayout"
@@ -281,7 +309,7 @@
             android:layout_width="18dp"
             android:layout_height="18dp"
             android:src="@android:drawable/ic_menu_delete"
-            android:tint="#FFFF4444" />
+            android:tint="@color/vault_accent" />
 
         <TextView
             android:id="@+id/entryDeleteText"
@@ -289,7 +317,7 @@
             android:layout_height="wrap_content"
             android:layout_marginStart="8dp"
             android:text="Delete this entry"
-            android:textColor="#FFFF4444"
+            android:textColor="@color/vault_accent"
             android:textSize="13sp" />
     </LinearLayout>
 

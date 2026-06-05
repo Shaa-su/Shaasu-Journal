@@ -27,7 +27,7 @@
                 android:id="@+id/vaultEntryIconImage"
                 android:layout_width="20dp"
                 android:layout_height="20dp"
-                android:tint="#FFFF4444" />
+                android:tint="@color/vault_accent" />
         </LinearLayout>
 
         <!-- Text block -->

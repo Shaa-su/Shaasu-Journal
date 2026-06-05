@@ -27,8 +27,8 @@
     <color name="event_accent_dark">@color/menu_teal_icon_bg</color>
     <color name="event_accent_light">#FF40CFC0</color>
 
-    <!-- Vault (purple/lavender accent) -->
-    <color name="vault_accent">#FFA78BFA</color>
-    <color name="vault_accent_dark">#FF8B6FE0</color>
-    <color name="vault_accent_dim">#554433CC</color>
+    <!-- Vault (cyan accent matching theme) -->
+    <color name="vault_accent">@color/menu_teal</color>
+    <color name="vault_accent_dark">@color/menu_teal_icon_bg</color>
+    <color name="vault_accent_dim">#5519BFAE</color>
 </resources>

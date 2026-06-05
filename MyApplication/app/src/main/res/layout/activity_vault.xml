@@ -370,7 +370,7 @@ android:src="@android:drawable/ic_menu_myplaces"
                         android:layout_width="36dp"
                         android:layout_height="36dp"
                         android:src="@android:drawable/ic_menu_edit"
-                        android:tint="#FFFF4444" />
+                        android:tint="@color/vault_accent" />
 
                     <TextView
                         android:layout_width="wrap_content"
