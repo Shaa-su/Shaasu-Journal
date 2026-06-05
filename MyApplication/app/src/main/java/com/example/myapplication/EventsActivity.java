@@ -151,7 +151,7 @@ public class EventsActivity extends AppCompatActivity {
     private Uri copyToInternalStorage(Uri contentUri) {
         try {
             String fileName = "event_bg_" + System.currentTimeMillis() + ".jpg";
-            java.io.File outFile = new java.io.File(getCacheDir(), fileName);
+            java.io.File outFile = new java.io.File(getFilesDir(), fileName);
             InputStream is = getContentResolver().openInputStream(contentUri);
             java.io.FileOutputStream os = new java.io.FileOutputStream(outFile);
             byte[] buffer = new byte[4096];
@@ -274,24 +274,34 @@ public class EventsActivity extends AppCompatActivity {
         if (titleView != null) titleView.setText(event.title);
         if (noteView != null) noteView.setText(event.note.isEmpty() ? "No note" : event.note);
 
-        // Load background image
-        if (cardImage != null && event.backgroundUri != null && !event.backgroundUri.isEmpty()) {
-            try {
-                Uri uri = Uri.parse(event.backgroundUri);
-                Bitmap bm = null;
-                if ("file".equals(uri.getScheme())) {
-                    bm = BitmapFactory.decodeFile(uri.getPath());
-                } else {
-                    InputStream is = getContentResolver().openInputStream(uri);
-                    bm = BitmapFactory.decodeStream(is);
-                    if (is != null) is.close();
-                }
-                if (bm != null) {
-                    cardImage.setImageBitmap(bm);
-                    cardImage.setScaleType(ImageView.ScaleType.CENTER_CROP);
-                    cardImage.setColorFilter(null);
-                }
-            } catch (Exception ignored) {
+        // Load background image (prefer base64, fallback to file URI)
+        if (cardImage != null) {
+            Bitmap bm = null;
+            // Try base64 first (survives export/import)
+            if (event.backgroundBase64 != null && !event.backgroundBase64.isEmpty()) {
+                try {
+                    byte[] bytes = android.util.Base64.decode(event.backgroundBase64, android.util.Base64.DEFAULT);
+                    bm = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
+                } catch (Exception ignored) {}
+            }
+            // Fallback to file URI
+            if (bm == null && event.backgroundUri != null && !event.backgroundUri.isEmpty()) {
+                try {
+                    Uri uri = Uri.parse(event.backgroundUri);
+                    if ("file".equals(uri.getScheme())) {
+                        bm = BitmapFactory.decodeFile(uri.getPath());
+                    } else {
+                        InputStream is = getContentResolver().openInputStream(uri);
+                        bm = BitmapFactory.decodeStream(is);
+                        if (is != null) is.close();
+                    }
+                } catch (Exception ignored) {}
+            }
+            if (bm != null) {
+                cardImage.setImageBitmap(bm);
+                cardImage.setScaleType(ImageView.ScaleType.CENTER_CROP);
+                cardImage.setColorFilter(null);
+            } else {
                 cardImage.setImageDrawable(null);
             }
         }
@@ -465,6 +475,37 @@ public class EventsActivity extends AppCompatActivity {
         card.setOnClickListener(v -> showNewEventDialog(event));
     }
 
+    private String encodeUriToBase64(Uri uri) {
+        if (uri == null) return null;
+        try {
+            Bitmap bm = null;
+            if ("file".equals(uri.getScheme())) {
+                bm = BitmapFactory.decodeFile(uri.getPath());
+            } else {
+                InputStream is = getContentResolver().openInputStream(uri);
+                if (is != null) {
+                    bm = BitmapFactory.decodeStream(is);
+                    is.close();
+                }
+            }
+            if (bm != null) {
+                // Compress to prevent OOM on large images
+                int maxDim = 600;
+                if (bm.getWidth() > maxDim || bm.getHeight() > maxDim) {
+                    float ratio = Math.min((float) maxDim / bm.getWidth(), (float) maxDim / bm.getHeight());
+                    int w = (int) (bm.getWidth() * ratio);
+                    int h = (int) (bm.getHeight() * ratio);
+                    bm = Bitmap.createScaledBitmap(bm, w, h, true);
+                }
+                // Use JPEG for smaller size
+                java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+                bm.compress(Bitmap.CompressFormat.JPEG, 85, baos);
+                return android.util.Base64.encodeToString(baos.toByteArray(), android.util.Base64.DEFAULT);
+            }
+        } catch (Exception ignored) {}
+        return null;
+    }
+
     private int dpToPx(int dp) {
         return Math.round(dp * getResources().getDisplayMetrics().density);
     }
@@ -575,9 +616,7 @@ public class EventsActivity extends AppCompatActivity {
             if (noteInput != null && !editEvent.note.isEmpty() && !"No note".equals(editEvent.note)) {
                 noteInput.setText(editEvent.note);
             }
-            if (editEvent.backgroundUri != null) {
-                selectedBackgroundUri = Uri.parse(editEvent.backgroundUri);
-            }
+            selectedBackgroundUri = editEvent.backgroundUri != null ? Uri.parse(editEvent.backgroundUri) : null;
         } else {
             eventMonth = now.get(java.util.Calendar.MONTH);
             eventDay = now.get(java.util.Calendar.DAY_OF_MONTH);
@@ -595,18 +634,32 @@ public class EventsActivity extends AppCompatActivity {
         }
 
         // Restore previously selected background if re-opening dialog
-        if (selectedBackgroundUri != null && backgroundImage != null) {
-            try {
-                InputStream is = getContentResolver().openInputStream(selectedBackgroundUri);
-                Bitmap bm = BitmapFactory.decodeStream(is);
-                if (bm != null) {
-                    backgroundImage.setImageBitmap(bm);
-                    backgroundImage.setScaleType(ImageView.ScaleType.CENTER_CROP);
-                    backgroundImage.setColorFilter(null);
-                    if (uploadOverlay != null) uploadOverlay.setVisibility(View.GONE);
+        Bitmap previewBm = null;
+        if (backgroundImage != null) {
+            // Try file URI first
+            if (selectedBackgroundUri != null) {
+                try {
+                    InputStream is = getContentResolver().openInputStream(selectedBackgroundUri);
+                    previewBm = BitmapFactory.decodeStream(is);
+                    if (is != null) is.close();
+                } catch (Exception ignored) {}
+            }
+            // Fallback to base64 (for imported or base64-only events)
+            if (previewBm == null && isEditing && editEvent != null) {
+                String b64 = editEvent.backgroundBase64;
+                if (b64 != null && !b64.isEmpty()) {
+                    try {
+                        byte[] bytes = android.util.Base64.decode(b64, android.util.Base64.DEFAULT);
+                        previewBm = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
+                    } catch (Exception ignored) {}
                 }
-                if (is != null) is.close();
-            } catch (Exception ignored) {}
+            }
+            if (previewBm != null) {
+                backgroundImage.setImageBitmap(previewBm);
+                backgroundImage.setScaleType(ImageView.ScaleType.CENTER_CROP);
+                backgroundImage.setColorFilter(null);
+                if (uploadOverlay != null) uploadOverlay.setVisibility(View.GONE);
+            }
         }
 
         AlertDialog dialog = new AlertDialog.Builder(this)
@@ -905,6 +958,8 @@ public class EventsActivity extends AppCompatActivity {
             // Create and save the event
             int savedOpacity = overlaySlider != null ? overlaySlider.getProgress() : overlayOpacity;
             String eventId = isEditing ? editEvent.id : java.util.UUID.randomUUID().toString();
+            String bgUriStr = selectedBackgroundUri != null ? selectedBackgroundUri.toString() : null;
+            String bgBase64 = encodeUriToBase64(selectedBackgroundUri);
             EventStore.EventItem event = new EventStore.EventItem(
                     eventId,
                     title,
@@ -916,7 +971,8 @@ public class EventsActivity extends AppCompatActivity {
                     notifyOnDay,
                     notifyHour,
                     notifyMinute,
-                    selectedBackgroundUri != null ? selectedBackgroundUri.toString() : null,
+                    bgUriStr,
+                    bgBase64,
                     savedOpacity,
                     System.currentTimeMillis()
             );

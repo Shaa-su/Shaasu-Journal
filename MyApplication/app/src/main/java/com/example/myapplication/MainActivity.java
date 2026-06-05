@@ -206,7 +206,18 @@ public class MainActivity extends AppCompatActivity {
                 if (r != null) remindersJson.put(r.toJson());
             }
 
-            if (storiesJson.length() == 0 && remindersJson.length() == 0) {
+            org.json.JSONArray eventsJson = new org.json.JSONArray();
+            for (EventStore.EventItem e : EventStore.getAll(this)) {
+                if (e != null) {
+                    try {
+                        eventsJson.put(e.toExportJson());
+                    } catch (Exception ignored) {
+                        // skip event if serialization fails
+                    }
+                }
+            }
+
+            if (storiesJson.length() == 0 && remindersJson.length() == 0 && eventsJson.length() == 0) {
                 Toast.makeText(this, "No data to export", Toast.LENGTH_SHORT).show();
                 return;
             }
@@ -218,6 +229,9 @@ public class MainActivity extends AppCompatActivity {
             }
             if (remindersJson.length() > 0) {
                 root.put("reminders", remindersJson);
+            }
+            if (eventsJson.length() > 0) {
+                root.put("events", eventsJson);
             }
 
             JSONObject envelope = ExportCrypto.encryptToEnvelope(root.toString(), password);
@@ -282,6 +296,7 @@ public class MainActivity extends AppCompatActivity {
     private ImportResult importFromPlainRoot(JSONObject root) throws Exception {
         int importedStories = 0;
         int importedReminders = 0;
+        int importedEventsCount = 0;
 
         if (root.has("stories")) {
             JSONObject storiesObject = root.getJSONObject("stories");
@@ -332,24 +347,50 @@ public class MainActivity extends AppCompatActivity {
             ReminderScheduler.rescheduleAll(this);
         }
 
-        return new ImportResult(importedStories, importedReminders);
+        if (root.has("events")) {
+            org.json.JSONArray eventsArray = root.getJSONArray("events");
+            java.util.List<EventStore.EventItem> eventItems = new java.util.ArrayList<>();
+            for (int i = 0; i < eventsArray.length(); i++) {
+                EventStore.EventItem e = EventStore.EventItem.fromJson(eventsArray.getJSONObject(i));
+                if (e != null) {
+                    // Clear file URI from old device — base64 handles display
+                    e.backgroundUri = null;
+                    eventItems.add(e);
+                }
+            }
+            // Clear existing and import
+            for (EventStore.EventItem e : EventStore.getAll(this)) {
+                EventStore.delete(this, e.id);
+            }
+            for (EventStore.EventItem e : eventItems) {
+                EventStore.put(this, e);
+                importedEventsCount++;
+            }
+        }
+
+        return new ImportResult(importedStories, importedReminders, importedEventsCount);
     }
 
     private String formatImportMessage(ImportResult result) {
         if (result == null) return "Import complete";
-        if (result.reminders == 0) {
-            return "Successfully imported " + result.stories + " stories!";
-        }
-        return "Successfully imported " + result.stories + " stories and " + result.reminders + " reminders!";
+        StringBuilder sb = new StringBuilder();
+        sb.append("Successfully imported ");
+        sb.append(result.stories).append(" stories");
+        if (result.reminders > 0) sb.append(", ").append(result.reminders).append(" reminders");
+        sb.append(", ").append(result.events).append(" events");
+        sb.append("!");
+        return sb.toString();
     }
 
     private static final class ImportResult {
         final int stories;
         final int reminders;
+        final int events;
 
-        ImportResult(int stories, int reminders) {
+        ImportResult(int stories, int reminders, int events) {
             this.stories = stories;
             this.reminders = reminders;
+            this.events = events;
         }
     }
 

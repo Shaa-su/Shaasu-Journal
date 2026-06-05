@@ -49,13 +49,14 @@ public final class EventStore {
         public int notifyHour; // 0-23
         public int notifyMinute; // 0-59
         public String backgroundUri; // nullable
+        public String backgroundBase64; // nullable, for export/import
         public int overlayOpacity; // 0-100
         public final long createdAtMillis;
 
         public EventItem(String id, String title, String note, int year, int month, int day,
                          boolean repeatYearly, boolean notifyOnDay,
                          int notifyHour, int notifyMinute,
-                         String backgroundUri,
+                         String backgroundUri, String backgroundBase64,
                          int overlayOpacity, long createdAtMillis) {
             this.id = id;
             this.title = title;
@@ -68,6 +69,7 @@ public final class EventStore {
             this.notifyHour = notifyHour;
             this.notifyMinute = notifyMinute;
             this.backgroundUri = backgroundUri;
+            this.backgroundBase64 = backgroundBase64;
             this.overlayOpacity = overlayOpacity;
             this.createdAtMillis = createdAtMillis;
         }
@@ -85,14 +87,27 @@ public final class EventStore {
             obj.put("notifyHour", notifyHour);
             obj.put("notifyMinute", notifyMinute);
             obj.put("backgroundUri", backgroundUri != null ? backgroundUri : "");
+            obj.put("backgroundBase64", backgroundBase64 != null ? backgroundBase64 : "");
             obj.put("overlayOpacity", overlayOpacity);
             obj.put("createdAtMillis", createdAtMillis);
+            return obj;
+        }
+
+        /** Same as toJson but also includes backgroundBase64 for export. */
+        JSONObject toExportJson() throws Exception {
+            JSONObject obj = toJson();
+            // Use already-stored base64 if available; otherwise encode from file
+            String b64 = (backgroundBase64 != null && !backgroundBase64.isEmpty())
+                    ? backgroundBase64
+                    : encodeBackgroundToBase64(backgroundUri);
+            obj.put("backgroundBase64", b64 != null ? b64 : "");
             return obj;
         }
 
         static EventItem fromJson(JSONObject obj) throws Exception {
             if (obj == null) return null;
             String bgUri = obj.optString("backgroundUri", "");
+            String b64 = obj.optString("backgroundBase64", "");
             return new EventItem(
                     obj.optString("id", UUID.randomUUID().toString()),
                     obj.optString("title", ""),
@@ -105,9 +120,48 @@ public final class EventStore {
                     obj.optInt("notifyHour", 9),
                     obj.optInt("notifyMinute", 0),
                     bgUri.isEmpty() ? null : bgUri,
+                    b64.isEmpty() ? null : b64,
                     obj.optInt("overlayOpacity", 40),
                     obj.optLong("createdAtMillis", System.currentTimeMillis())
             );
+        }
+
+        private static String encodeBackgroundToBase64(String uriStr) {
+            if (uriStr == null || uriStr.isEmpty()) return null;
+            try {
+                android.net.Uri uri = android.net.Uri.parse(uriStr);
+                android.graphics.Bitmap bm = android.graphics.BitmapFactory.decodeFile(uri.getPath());
+                if (bm == null) return null;
+                // Compress to prevent OOM
+                int maxDim = 600;
+                if (bm.getWidth() > maxDim || bm.getHeight() > maxDim) {
+                    float ratio = Math.min((float) maxDim / bm.getWidth(), (float) maxDim / bm.getHeight());
+                    bm = android.graphics.Bitmap.createScaledBitmap(bm,
+                            (int) (bm.getWidth() * ratio), (int) (bm.getHeight() * ratio), true);
+                }
+                java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+                bm.compress(android.graphics.Bitmap.CompressFormat.JPEG, 85, baos);
+                byte[] bytes = baos.toByteArray();
+                return android.util.Base64.encodeToString(bytes, android.util.Base64.DEFAULT);
+            } catch (Exception ignored) {
+                return null;
+            }
+        }
+
+        /** Restore a background image from base64 to a local cache file, returns the file:// URI. */
+        public static String restoreBackgroundFromBase64(String b64, Context context) {
+            if (b64 == null || b64.isEmpty() || context == null) return null;
+            try {
+                byte[] bytes = android.util.Base64.decode(b64, android.util.Base64.DEFAULT);
+                String fileName = "event_bg_import_" + UUID.randomUUID().toString() + ".png";
+                java.io.File outFile = new java.io.File(context.getFilesDir(), fileName);
+                java.io.FileOutputStream fos = new java.io.FileOutputStream(outFile);
+                fos.write(bytes);
+                fos.close();
+                return android.net.Uri.fromFile(outFile).toString();
+            } catch (Exception ignored) {
+                return null;
+            }
         }
     }
 
