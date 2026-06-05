@@ -73,6 +73,22 @@
             app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintBottom_toBottomOf="parent" />
 
+        <!-- Reset Recovery icon -->
+        <ImageButton
+            android:id="@+id/resetRecoveryButton"
+            android:layout_width="34dp"
+            android:layout_height="34dp"
+            android:layout_marginEnd="6dp"
+            android:background="@drawable/bg_event_close_button"
+            android:contentDescription="Reset Recovery"
+            android:scaleType="center"
+            android:src="@drawable/ic_recovery_shield"
+            android:tint="@color/vault_accent"
+            android:visibility="gone"
+            app:layout_constraintEnd_toStartOf="@+id/addButton"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent" />
+
         <!-- + Add button -->
         <TextView
             android:id="@+id/addButton"
@@ -137,7 +153,22 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="16dp" />
+                android:padding="16dp">
+
+                <!-- Reset Recovery link at bottom of entries -->
+                <TextView
+                    android:id="@+id/resetRecoveryLinkEntries"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:layout_gravity="center_horizontal"
+                    android:text="Reset Recovery"
+                    android:textColor="@color/menu_text_secondary"
+                    android:textSize="11sp"
+                    android:visibility="gone"
+                    android:clickable="true"
+                    android:focusable="true" />
+            </LinearLayout>
 
         </ScrollView>
 

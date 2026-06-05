@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="@drawable/bg_dialog_rounded"
+    android:padding="24dp">
+
+    <!-- Title -->
+    <TextView
+        android:id="@+id/recoveryTitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Set Recovery Question"
+        android:textColor="@color/menu_text_primary"
+        android:textSize="18sp"
+        android:textStyle="bold" />
+
+    <!-- Security note -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:text="This will be used if you forget your PIN."
+        android:textColor="@color/menu_text_secondary"
+        android:textSize="12sp" />
+
+    <!-- Extra note for existing users (shown/hidden by code) -->
+    <TextView
+        android:id="@+id/recoveryExtraNote"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:text=""
+        android:textColor="@color/event_accent"
+        android:textSize="11sp"
+        android:visibility="gone" />
+
+    <!-- Question field -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="18dp"
+        android:text="RECOVERY QUESTION"
+        android:textColor="@color/menu_text_secondary"
+        android:textSize="11sp"
+        android:textStyle="bold"
+        android:letterSpacing="0.08" />
+
+    <EditText
+        android:id="@+id/recoveryQuestionInput"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:layout_marginTop="6dp"
+        android:background="@drawable/bg_event_input"
+        android:paddingStart="14dp"
+        android:paddingEnd="14dp"
+        android:textSize="14sp"
+        android:textColor="@color/menu_text_primary"
+        android:textColorHint="@color/menu_text_secondary"
+        android:hint="e.g. What was your first pet?"
+        android:inputType="text"
+        android:maxLines="2" />
+
+    <!-- Answer field -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="14dp"
+        android:text="YOUR ANSWER"
+        android:textColor="@color/menu_text_secondary"
+        android:textSize="11sp"
+        android:textStyle="bold"
+        android:letterSpacing="0.08" />
+
+    <EditText
+        android:id="@+id/recoveryAnswerInput"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:layout_marginTop="6dp"
+        android:background="@drawable/bg_event_input"
+        android:paddingStart="14dp"
+        android:paddingEnd="14dp"
+        android:textSize="14sp"
+        android:textColor="@color/menu_text_primary"
+        android:textColorHint="@color/menu_text_secondary"
+        android:hint="Your answer"
+        android:inputType="text"
+        android:maxLines="1" />
+
+    <!-- Case-sensitive toggle -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Case-sensitive matching"
+            android:textColor="@color/menu_text_secondary"
+            android:textSize="12sp" />
+
+        <TextView
+            android:id="@+id/recoveryCaseToggle"
+            android:layout_width="44dp"
+            android:layout_height="24dp"
+            android:background="@drawable/bg_toggle_off"
+            android:gravity="center"
+            android:text="OFF"
+            android:textColor="@color/menu_text_secondary"
+            android:textSize="9sp"
+            android:textStyle="bold"
+            android:clickable="true"
+            android:focusable="true" />
+    </LinearLayout>
+
+    <!-- Buttons -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="22dp"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:weightSum="2">
+
+        <TextView
+            android:id="@+id/recoverySkip"
+            android:layout_width="0dp"
+            android:layout_height="48dp"
+            android:layout_weight="1"
+            android:layout_marginEnd="6dp"
+            android:gravity="center"
+            android:text="Skip"
+            android:textColor="@color/menu_text_secondary"
+            android:textSize="14sp"
+            android:clickable="true"
+            android:focusable="true"
+            android:background="@drawable/bg_event_input" />
+
+        <TextView
+            android:id="@+id/recoverySave"
+            android:layout_width="0dp"
+            android:layout_height="48dp"
+            android:layout_weight="1"
+            android:layout_marginStart="6dp"
+            android:gravity="center"
+            android:text="Save"
+            android:textColor="@color/black"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:clickable="true"
+            android:focusable="true"
+            android:background="@drawable/bg_vault_pill_purple" />
+
+    </LinearLayout>
+
+</LinearLayout>

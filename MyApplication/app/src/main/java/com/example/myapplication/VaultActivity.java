@@ -3,6 +3,7 @@ package com.example.myapplication;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
@@ -103,6 +104,15 @@ public class VaultActivity extends AppCompatActivity {
         if (cardCreditCard != null) cardCreditCard.setOnClickListener(v -> showVaultAddDialog("Credit Card"));
         if (cardWifi != null) cardWifi.setOnClickListener(v -> showVaultAddDialog("Other Accounts"));
         if (cardSecretNote != null) cardSecretNote.setOnClickListener(v -> showVaultAddDialog("Secret Note"));
+
+        // Reset Recovery button (header, next to + Add)
+        ImageButton resetRecoveryBtn = findViewById(R.id.resetRecoveryButton);
+        if (resetRecoveryBtn != null) {
+            SharedPreferences pinPrefs = getSharedPreferences("vault_pin_prefs", MODE_PRIVATE);
+            boolean hasRecovery = pinPrefs.contains("recovery_question");
+            resetRecoveryBtn.setVisibility(hasRecovery ? View.VISIBLE : View.GONE);
+            resetRecoveryBtn.setOnClickListener(v -> showResetRecoveryDialog());
+        }
 
         refreshVaultEntries();
     }
@@ -573,10 +583,111 @@ public class VaultActivity extends AppCompatActivity {
         }
     }
 
+    private void showResetRecoveryDialog() {
+        // Reuse the recovery setup dialog from VaultPinActivity's layout
+        View container = LayoutInflater.from(this).inflate(R.layout.dialog_vault_recovery, null, false);
+        if (container == null) return;
+
+        TextView title = container.findViewById(R.id.recoveryTitle);
+        TextView extraNote = container.findViewById(R.id.recoveryExtraNote);
+        EditText questionInput = container.findViewById(R.id.recoveryQuestionInput);
+        EditText answerInput = container.findViewById(R.id.recoveryAnswerInput);
+        TextView caseToggle = container.findViewById(R.id.recoveryCaseToggle);
+        TextView skipBtn = container.findViewById(R.id.recoverySkip);
+        TextView saveBtn = container.findViewById(R.id.recoverySave);
+
+        if (title != null) title.setText("Reset Recovery Question");
+        if (extraNote != null) {
+            extraNote.setVisibility(View.VISIBLE);
+            extraNote.setText("Update your recovery question and answer.");
+        }
+        if (questionInput != null) {
+            questionInput.setHint("e.g. What was your first pet?");
+            questionInput.setText("");
+        }
+        if (answerInput != null) {
+            answerInput.setHint("Your answer");
+            answerInput.setInputType(InputType.TYPE_CLASS_TEXT);
+            answerInput.setText("");
+        }
+        if (skipBtn != null) skipBtn.setText("Cancel");
+        if (saveBtn != null) saveBtn.setText("Save");
+
+        // Case-sensitive toggle
+        final boolean[] isCaseSensitive = {false};
+        if (caseToggle != null) {
+            caseToggle.setText("OFF");
+            caseToggle.setBackgroundResource(R.drawable.bg_toggle_off);
+            caseToggle.setOnClickListener(v -> {
+                isCaseSensitive[0] = !isCaseSensitive[0];
+                if (isCaseSensitive[0]) {
+                    caseToggle.setText("ON");
+                    caseToggle.setBackgroundResource(R.drawable.bg_toggle_on);
+                    caseToggle.setTextColor(getColor(R.color.black));
+                } else {
+                    caseToggle.setText("OFF");
+                    caseToggle.setBackgroundResource(R.drawable.bg_toggle_off);
+                    caseToggle.setTextColor(getColor(R.color.menu_text_secondary));
+                }
+            });
+        }
+
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setView(container)
+                .create();
+        dialog.setOnShowListener(d -> {
+            if (dialog.getWindow() != null) {
+                dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+                dialog.getWindow().setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            }
+        });
+
+        if (skipBtn != null) {
+            skipBtn.setOnClickListener(v -> dialog.dismiss());
+        }
+
+        if (saveBtn != null) {
+            saveBtn.setOnClickListener(v -> {
+                String question = questionInput != null ? questionInput.getText().toString().trim() : "";
+                String answer = answerInput != null ? answerInput.getText().toString().trim() : "";
+                if (question.isEmpty() || answer.isEmpty()) {
+                    Toast.makeText(this, "Please fill in both fields", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                SharedPreferences prefs = getSharedPreferences("vault_pin_prefs", MODE_PRIVATE);
+                String answerToStore = isCaseSensitive[0] ? answer : answer.toLowerCase();
+                prefs.edit()
+                        .putString("recovery_question", question)
+                        .putString("recovery_answer_hash", hashAnswer(answerToStore))
+                        .putBoolean("recovery_case_sensitive", isCaseSensitive[0])
+                        .apply();
+                String msg = "Recovery question updated" + (isCaseSensitive[0] ? " (case-sensitive)" : "");
+                Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
+                dialog.dismiss();
+            });
+        }
+
+        dialog.show();
+    }
+
     private void copyToClipboard(String text, String toastMsg) {
         if (text == null || text.isEmpty()) return;
         ClipboardManager cm = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
         cm.setPrimaryClip(ClipData.newPlainText("vault", text));
         Toast.makeText(this, toastMsg, Toast.LENGTH_SHORT).show();
+    }
+
+    private String hashAnswer(String answer) {
+        try {
+            java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-256");
+            byte[] hash = md.digest(answer.getBytes("UTF-8"));
+            StringBuilder hex = new StringBuilder();
+            for (byte b : hash) {
+                hex.append(String.format("%02x", b));
+            }
+            return hex.toString();
+        } catch (Exception e) {
+            return answer;
+        }
     }
 }
