@@ -1,6 +1,8 @@
 package com.example.myapplication;
 
 import android.content.Intent;
+import android.content.SharedPreferences;
+import android.net.Uri;
 import android.os.Bundle;
 import android.text.InputType;
 import android.view.View;
@@ -246,6 +248,19 @@ public class MainActivity extends AppCompatActivity {
                 root.put("vault", vaultJson);
             }
 
+            // Export vault PIN + recovery question
+            SharedPreferences pinPrefs = getSharedPreferences("vault_pin_prefs", MODE_PRIVATE);
+            if (pinPrefs.contains("pin_hash")) {
+                JSONObject vaultPinJson = new JSONObject();
+                vaultPinJson.put("pin_hash", pinPrefs.getString("pin_hash", ""));
+                if (pinPrefs.contains("recovery_question")) {
+                    vaultPinJson.put("recovery_question", pinPrefs.getString("recovery_question", ""));
+                    vaultPinJson.put("recovery_answer_hash", pinPrefs.getString("recovery_answer_hash", ""));
+                    vaultPinJson.put("recovery_case_sensitive", pinPrefs.getBoolean("recovery_case_sensitive", false));
+                }
+                root.put("vault_pin", vaultPinJson);
+            }
+
             JSONObject envelope = ExportCrypto.encryptToEnvelope(root.toString(), password);
 
             try (OutputStream os = getContentResolver().openOutputStream(uri)) {
@@ -310,6 +325,7 @@ public class MainActivity extends AppCompatActivity {
         int importedReminders = 0;
         int importedEventsCount = 0;
         int importedVaultCount = 0;
+        boolean importedPin = false;
 
         if (root.has("stories")) {
             JSONObject storiesObject = root.getJSONObject("stories");
@@ -397,7 +413,24 @@ public class MainActivity extends AppCompatActivity {
             }
         }
 
-        return new ImportResult(importedStories, importedReminders, importedEventsCount, importedVaultCount);
+        if (root.has("vault_pin")) {
+            JSONObject vaultPinJson = root.getJSONObject("vault_pin");
+            SharedPreferences pinPrefs = getSharedPreferences("vault_pin_prefs", MODE_PRIVATE);
+            SharedPreferences.Editor pinEditor = pinPrefs.edit();
+            String pinHash = vaultPinJson.optString("pin_hash", "");
+            if (!pinHash.isEmpty()) {
+                pinEditor.putString("pin_hash", pinHash);
+                importedPin = true;
+            }
+            if (vaultPinJson.has("recovery_question")) {
+                pinEditor.putString("recovery_question", vaultPinJson.optString("recovery_question", ""));
+                pinEditor.putString("recovery_answer_hash", vaultPinJson.optString("recovery_answer_hash", ""));
+                pinEditor.putBoolean("recovery_case_sensitive", vaultPinJson.optBoolean("recovery_case_sensitive", false));
+            }
+            pinEditor.commit();
+        }
+
+        return new ImportResult(importedStories, importedReminders, importedEventsCount, importedVaultCount, importedPin);
     }
 
     private String formatImportMessage(ImportResult result) {
@@ -408,6 +441,7 @@ public class MainActivity extends AppCompatActivity {
         if (result.reminders > 0) sb.append(", ").append(result.reminders).append(" reminders");
         sb.append(", ").append(result.events).append(" events");
         if (result.vault > 0) sb.append(", ").append(result.vault).append(" vault entries");
+        if (result.pin) sb.append(", vault PIN");
         sb.append("!");
         return sb.toString();
     }
@@ -417,12 +451,14 @@ public class MainActivity extends AppCompatActivity {
         final int reminders;
         final int events;
         final int vault;
+        final boolean pin;
 
-        ImportResult(int stories, int reminders, int events, int vault) {
+        ImportResult(int stories, int reminders, int events, int vault, boolean pin) {
             this.stories = stories;
             this.reminders = reminders;
             this.events = events;
             this.vault = vault;
+            this.pin = pin;
         }
     }
 
