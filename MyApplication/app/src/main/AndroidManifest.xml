@@ -50,6 +50,10 @@
             android:name=".EventsActivity"
             android:exported="true" />
 
+        <activity
+            android:name=".VaultActivity"
+            android:exported="true" />
+
         <receiver
             android:name=".ReminderReceiver"
             android:exported="false" />

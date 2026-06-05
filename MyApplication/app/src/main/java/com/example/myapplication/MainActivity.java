@@ -144,8 +144,8 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void handleVault() {
-        // TODO: Implement vault logic
-        Toast.makeText(this, "Vault coming soon", Toast.LENGTH_SHORT).show();
+        Intent intent = new Intent(MainActivity.this, VaultActivity.class);
+        startActivity(intent);
     }
 
     private void handleImportData() {
