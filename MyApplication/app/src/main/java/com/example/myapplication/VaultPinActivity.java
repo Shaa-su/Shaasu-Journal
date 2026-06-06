@@ -59,7 +59,7 @@ public class VaultPinActivity extends AppCompatActivity {
             ViewCompat.requestApplyInsets(root);
         }
 
-        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        SharedPreferences prefs = PinStore.get(this);
         boolean hasPin = prefs.contains(KEY_PIN_HASH);
         isSettingPin = !hasPin;
         boolean hasRecovery = prefs.contains(KEY_RECOVERY_QUESTION);
@@ -154,7 +154,7 @@ public class VaultPinActivity extends AppCompatActivity {
             return;
         }
 
-        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        SharedPreferences prefs = PinStore.get(this);
 
         if (isSettingPin) {
             if (firstPinAttempt == null) {
@@ -290,7 +290,7 @@ public class VaultPinActivity extends AppCompatActivity {
                     Toast.makeText(this, "Please fill in both fields", Toast.LENGTH_SHORT).show();
                     return;
                 }
-                SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+                SharedPreferences prefs = PinStore.get(this);
                 String answerToStore = isCaseSensitive[0] ? answer : answer.toLowerCase();
                 prefs.edit()
                         .putString(KEY_RECOVERY_QUESTION, question)
@@ -310,7 +310,7 @@ public class VaultPinActivity extends AppCompatActivity {
     // ─── Recovery Verification ────────────────────────────────
 
     private void showRecoveryVerifyDialog() {
-        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        SharedPreferences prefs = PinStore.get(this);
         String question = prefs.getString(KEY_RECOVERY_QUESTION, "");
 
         View container = LayoutInflater.from(this).inflate(R.layout.dialog_vault_recovery, null, false);
@@ -395,7 +395,7 @@ public class VaultPinActivity extends AppCompatActivity {
 
     private void startPinResetFlow() {
         // Clear PIN + recovery in a single atomic commit
-        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        SharedPreferences prefs = PinStore.get(this);
         prefs.edit()
                 .remove(KEY_PIN_HASH)
                 .remove(KEY_RECOVERY_QUESTION)
@@ -424,7 +424,7 @@ public class VaultPinActivity extends AppCompatActivity {
 
     private void openVault() {
         // If user has a PIN but no recovery question, prompt to set one
-        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        SharedPreferences prefs = PinStore.get(this);
         if (prefs.contains(KEY_PIN_HASH) && !prefs.contains(KEY_RECOVERY_QUESTION)) {
             showRecoverySetupForExistingUser();
             return;

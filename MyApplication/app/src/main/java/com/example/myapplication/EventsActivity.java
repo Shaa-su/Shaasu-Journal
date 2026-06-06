@@ -117,7 +117,7 @@ public class EventsActivity extends AppCompatActivity {
             enableAlertsIcon = enableAlertsButton.findViewById(R.id.enableAlertsIcon);
             enableAlertsText = enableAlertsButton.findViewById(R.id.enableAlertsText);
             // Load persisted state
-            alertsEnabled = getSharedPreferences("events_prefs", MODE_PRIVATE)
+            alertsEnabled = getEventsPrefs()
                     .getBoolean(PREFS_ALERTS_ENABLED, false);
             updateAlertsButtonUi();
             enableAlertsButton.setOnClickListener(v -> handleEnableAlerts());
@@ -501,6 +501,38 @@ public class EventsActivity extends AppCompatActivity {
         card.setOnClickListener(v -> showNewEventDialog(event));
     }
 
+    private android.content.SharedPreferences getEventsPrefs() {
+        // Migrate from plain to encrypted on first access
+        android.content.SharedPreferences encrypted;
+        try {
+            androidx.security.crypto.MasterKey mk = new androidx.security.crypto.MasterKey.Builder(this)
+                    .setKeyScheme(androidx.security.crypto.MasterKey.KeyScheme.AES256_GCM)
+                    .build();
+            encrypted = androidx.security.crypto.EncryptedSharedPreferences.create(
+                    this, "events_secure", mk,
+                    androidx.security.crypto.EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+                    androidx.security.crypto.EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM);
+            // Migrate from old plain prefs
+            if (encrypted.getAll().isEmpty()) {
+                android.content.SharedPreferences plain = getSharedPreferences("events_prefs", MODE_PRIVATE);
+                if (!plain.getAll().isEmpty()) {
+                    android.content.SharedPreferences.Editor ed = encrypted.edit();
+                    for (String k : plain.getAll().keySet()) {
+                        Object v = plain.getAll().get(k);
+                        if (v instanceof Boolean) ed.putBoolean(k, (Boolean) v);
+                        else if (v instanceof String) ed.putString(k, (String) v);
+                        else if (v instanceof Integer) ed.putInt(k, (Integer) v);
+                    }
+                    ed.apply();
+                    plain.edit().clear().apply();
+                }
+            }
+        } catch (Exception e) {
+            return getSharedPreferences("events_prefs", MODE_PRIVATE);
+        }
+        return encrypted;
+    }
+
     private String encodeUriToBase64(Uri uri) {
         if (uri == null) return null;
         try {
@@ -565,7 +597,7 @@ public class EventsActivity extends AppCompatActivity {
 
         alertsEnabled = turningOn;
         // Persist
-        getSharedPreferences("events_prefs", MODE_PRIVATE)
+        getEventsPrefs()
                 .edit()
                 .putBoolean(PREFS_ALERTS_ENABLED, alertsEnabled)
                 .apply();
@@ -1011,7 +1043,14 @@ public class EventsActivity extends AppCompatActivity {
             int savedOpacity = overlaySlider != null ? overlaySlider.getProgress() : overlayOpacity;
             String eventId = isEditing ? editEvent.id : java.util.UUID.randomUUID().toString();
             String bgUriStr = selectedBackgroundUri != null ? selectedBackgroundUri.toString() : null;
-            String bgBase64 = encodeUriToBase64(selectedBackgroundUri);
+            String bgBase64 = null;
+            if (selectedBackgroundUri != null) {
+                bgBase64 = encodeUriToBase64(selectedBackgroundUri);
+            } else if (isEditing && editEvent != null && editEvent.backgroundBase64 != null && !editEvent.backgroundBase64.isEmpty()) {
+                // Preserve existing base64 if no new image was selected
+                bgBase64 = editEvent.backgroundBase64;
+                bgUriStr = editEvent.backgroundUri;
+            }
             EventStore.EventItem event = new EventStore.EventItem(
                     eventId,
                     title,

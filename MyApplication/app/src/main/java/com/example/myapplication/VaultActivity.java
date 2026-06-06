@@ -112,7 +112,7 @@ public class VaultActivity extends AppCompatActivity {
         // Reset Recovery button (header, next to + Add)
         ImageButton resetRecoveryBtn = findViewById(R.id.resetRecoveryButton);
         if (resetRecoveryBtn != null) {
-            SharedPreferences pinPrefs = getSharedPreferences("vault_pin_prefs", MODE_PRIVATE);
+            SharedPreferences pinPrefs = PinStore.get(this);
             boolean hasRecovery = pinPrefs.contains("recovery_question");
             resetRecoveryBtn.setVisibility(hasRecovery ? View.VISIBLE : View.GONE);
             resetRecoveryBtn.setOnClickListener(v -> showResetRecoveryDialog());
@@ -690,7 +690,7 @@ public class VaultActivity extends AppCompatActivity {
                     Toast.makeText(this, "Please fill in both fields", Toast.LENGTH_SHORT).show();
                     return;
                 }
-                SharedPreferences prefs = getSharedPreferences("vault_pin_prefs", MODE_PRIVATE);
+                SharedPreferences prefs = PinStore.get(this);
                 String answerToStore = isCaseSensitive[0] ? answer : answer.toLowerCase();
                 prefs.edit()
                         .putString("recovery_question", question)

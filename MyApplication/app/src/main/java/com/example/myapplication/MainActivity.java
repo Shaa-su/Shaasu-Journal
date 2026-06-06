@@ -249,7 +249,7 @@ public class MainActivity extends AppCompatActivity {
             }
 
             // Export vault PIN + recovery question
-            SharedPreferences pinPrefs = getSharedPreferences("vault_pin_prefs", MODE_PRIVATE);
+            SharedPreferences pinPrefs = PinStore.get(this);
             if (pinPrefs.contains("pin_hash")) {
                 JSONObject vaultPinJson = new JSONObject();
                 vaultPinJson.put("pin_hash", pinPrefs.getString("pin_hash", ""));
@@ -415,7 +415,7 @@ public class MainActivity extends AppCompatActivity {
 
         if (root.has("vault_pin")) {
             JSONObject vaultPinJson = root.getJSONObject("vault_pin");
-            SharedPreferences pinPrefs = getSharedPreferences("vault_pin_prefs", MODE_PRIVATE);
+            SharedPreferences pinPrefs = PinStore.get(this);
             SharedPreferences.Editor pinEditor = pinPrefs.edit();
             String pinHash = vaultPinJson.optString("pin_hash", "");
             if (!pinHash.isEmpty()) {

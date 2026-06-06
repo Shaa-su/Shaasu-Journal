@@ -57,7 +57,7 @@ public class LoginActivity extends AppCompatActivity {
         loginTitle = findViewById(R.id.loginTitle);
         loginTagline = findViewById(R.id.loginTagline);
 
-        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        SharedPreferences prefs = LoginStore.get(this);
         boolean hasAccount = prefs.contains(KEY_USERNAME_HASH);
 
         // Always show app name as title
@@ -114,7 +114,7 @@ public class LoginActivity extends AppCompatActivity {
         }
 
         // Save credentials
-        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        SharedPreferences prefs = LoginStore.get(this);
         prefs.edit()
                 .putString(KEY_USERNAME_HASH, hash(username.toLowerCase()))
                 .putString(KEY_PASSWORD_HASH, hash(password))
@@ -137,7 +137,7 @@ public class LoginActivity extends AppCompatActivity {
             return;
         }
 
-        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        SharedPreferences prefs = LoginStore.get(this);
         String storedUserHash = prefs.getString(KEY_USERNAME_HASH, null);
         String storedPassHash = prefs.getString(KEY_PASSWORD_HASH, null);
 
@@ -247,7 +247,7 @@ public class LoginActivity extends AppCompatActivity {
 
         // Load existing questions (not first time)
         if (!isFirstTime) {
-            SharedPreferences existingPrefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+            SharedPreferences existingPrefs = LoginStore.get(this);
             String existingRaw = existingPrefs.getString(KEY_QUESTIONS, "[]");
             try {
                 JSONArray existingArr = new JSONArray(existingRaw);
@@ -314,7 +314,7 @@ public class LoginActivity extends AppCompatActivity {
                 try {
                     JSONArray arr = new JSONArray();
                     for (QuestionItem qi : questions) arr.put(qi.toJson());
-                    SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+                    SharedPreferences prefs = LoginStore.get(this);
                     prefs.edit()
                             .putString(KEY_QUESTIONS, arr.toString())
                             .putInt(KEY_REQUIRED_CORRECT, required[0])
@@ -389,7 +389,7 @@ public class LoginActivity extends AppCompatActivity {
     // ─── Recovery Answer ──────────────────────────────────────
 
     private void showRecoveryDialog() {
-        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        SharedPreferences prefs = LoginStore.get(this);
         String questionsRaw = prefs.getString(KEY_QUESTIONS, "[]");
         int requiredCorrect = prefs.getInt(KEY_REQUIRED_CORRECT, 1);
 
@@ -502,7 +502,7 @@ public class LoginActivity extends AppCompatActivity {
         TextView saveBtn = container.findViewById(R.id.resetSave);
 
         // Pre-fill current username
-        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        SharedPreferences prefs = LoginStore.get(this);
         // We don't store plaintext username, so leave it empty for the user to type
 
         AlertDialog dialog = new AlertDialog.Builder(this)
