@@ -9,12 +9,12 @@
 
     <!-- Login UI -->
     <string name="login_title">Shaasu Story</string>
-    <string name="login_tagline">Every day is a story. Begin yours.</string>
+    <string name="login_tagline">Everyday is a story. Begin yours.</string>
     <string name="login_username_label">USERNAME</string>
     <string name="login_password_label">PASSWORD</string>
     <string name="login_username_hint">Enter your username</string>
     <string name="login_password_hint">Enter your password</string>
     <string name="login_cta">Begin Your Story</string>
     <string name="login_reset_password">Reset Password</string>
-    <string name="login_footer">SHAASU STORY · PRIVATE JOURNAL</string>
+    <string name="login_footer">SHAASU JOURNAL · Everyday is a story. Begin yours.</string>
 </resources>
