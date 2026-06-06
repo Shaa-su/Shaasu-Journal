@@ -245,6 +245,23 @@ public class LoginActivity extends AppCompatActivity {
             });
         }
 
+        // Load existing questions (not first time)
+        if (!isFirstTime) {
+            SharedPreferences existingPrefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+            String existingRaw = existingPrefs.getString(KEY_QUESTIONS, "[]");
+            try {
+                JSONArray existingArr = new JSONArray(existingRaw);
+                for (int i = 0; i < existingArr.length(); i++) {
+                    questions.add(QuestionItem.fromJson(existingArr.getJSONObject(i)));
+                }
+            } catch (Exception ignored) {}
+            if (!questions.isEmpty()) {
+                required[0] = existingPrefs.getInt(KEY_REQUIRED_CORRECT, 1);
+                if (requiredCount != null) requiredCount.setText(String.valueOf(required[0]));
+            }
+            refreshQuestionList(questionList, listLabel, questions, required, requiredCount, requiredPlus);
+        }
+
         // Add question
         if (addBtn != null) {
             addBtn.setOnClickListener(v -> {
@@ -478,10 +495,15 @@ public class LoginActivity extends AppCompatActivity {
         View container = LayoutInflater.from(this).inflate(R.layout.dialog_reset_password, null, false);
         if (container == null) return;
 
+        EditText newUsernameInput = container.findViewById(R.id.resetNewUsername);
         EditText newPassInput = container.findViewById(R.id.resetNewPassword);
         EditText confirmPassInput = container.findViewById(R.id.resetConfirmPassword);
         TextView cancelBtn = container.findViewById(R.id.resetCancel);
         TextView saveBtn = container.findViewById(R.id.resetSave);
+
+        // Pre-fill current username
+        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        // We don't store plaintext username, so leave it empty for the user to type
 
         AlertDialog dialog = new AlertDialog.Builder(this)
                 .setView(container)
@@ -497,23 +519,33 @@ public class LoginActivity extends AppCompatActivity {
 
         if (saveBtn != null) {
             saveBtn.setOnClickListener(v -> {
+                String newUsername = newUsernameInput != null ? newUsernameInput.getText().toString().trim() : "";
                 String newPass = newPassInput != null ? newPassInput.getText().toString().trim() : "";
                 String confirm = confirmPassInput != null ? confirmPassInput.getText().toString().trim() : "";
-                if (newPass.isEmpty() || confirm.isEmpty()) {
-                    Toast.makeText(this, "Please fill in both fields", Toast.LENGTH_SHORT).show();
+
+                if (newUsername.isEmpty() && newPass.isEmpty()) {
+                    Toast.makeText(this, "Please fill in at least one field", Toast.LENGTH_SHORT).show();
                     return;
                 }
                 if (!newPass.equals(confirm)) {
                     Toast.makeText(this, "Passwords don't match", Toast.LENGTH_SHORT).show();
                     return;
                 }
-                if (newPass.length() < 3) {
+                if (!newPass.isEmpty() && newPass.length() < 3) {
                     Toast.makeText(this, "Password must be at least 3 characters", Toast.LENGTH_SHORT).show();
                     return;
                 }
-                SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
-                prefs.edit().putString(KEY_PASSWORD_HASH, hash(newPass)).commit();
-                Toast.makeText(this, "Password reset successfully!", Toast.LENGTH_SHORT).show();
+
+                SharedPreferences.Editor editor = prefs.edit();
+                if (!newUsername.isEmpty()) {
+                    editor.putString(KEY_USERNAME_HASH, hash(newUsername.toLowerCase()));
+                }
+                if (!newPass.isEmpty()) {
+                    editor.putString(KEY_PASSWORD_HASH, hash(newPass));
+                }
+                editor.commit();
+
+                Toast.makeText(this, "Credentials updated!", Toast.LENGTH_SHORT).show();
                 dialog.dismiss();
                 // Now let user update their recovery questions
                 showRecoverySetupDialog(false);
