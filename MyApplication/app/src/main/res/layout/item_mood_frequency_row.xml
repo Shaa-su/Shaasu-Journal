@@ -64,7 +64,6 @@
         app:layout_constraintStart_toStartOf="@+id/freqBarTrack"
         app:layout_constraintTop_toTopOf="@+id/freqBarTrack"
         app:layout_constraintBottom_toBottomOf="@+id/freqBarTrack"
-        app:layout_constraintEnd_toEndOf="@+id/freqBarTrack"
         app:layout_constraintWidth_percent="0.5" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

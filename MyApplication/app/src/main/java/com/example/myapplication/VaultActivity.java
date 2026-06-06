@@ -50,6 +50,10 @@ public class VaultActivity extends AppCompatActivity {
     private String encodedImageBase64;
     private AlertDialog currentAddDialog;
 
+    // Search
+    private String searchQuery = "";
+    private EditText searchInput;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -114,6 +118,19 @@ public class VaultActivity extends AppCompatActivity {
             resetRecoveryBtn.setOnClickListener(v -> showResetRecoveryDialog());
         }
 
+        // Search
+        searchInput = findViewById(R.id.searchInput);
+        if (searchInput != null) {
+            searchInput.addTextChangedListener(new android.text.TextWatcher() {
+                @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+                @Override public void onTextChanged(CharSequence s, int start, int before, int count) {
+                    searchQuery = s != null ? s.toString().toLowerCase(java.util.Locale.US).trim() : "";
+                    refreshVaultEntries();
+                }
+                @Override public void afterTextChanged(android.text.Editable s) {}
+            });
+        }
+
         refreshVaultEntries();
     }
 
@@ -129,12 +146,31 @@ public class VaultActivity extends AppCompatActivity {
         LinearLayout entriesContainer = findViewById(R.id.vaultEntriesContainer);
         if (entriesScroll == null || emptyState == null || entriesContainer == null) return;
 
-        java.util.List<VaultStore.VaultItem> items = VaultStore.getAll(this);
+        java.util.List<VaultStore.VaultItem> allItems = VaultStore.getAll(this);
         entriesContainer.removeAllViews();
+
+        // Filter by search query
+        java.util.List<VaultStore.VaultItem> items = allItems;
+        if (searchQuery != null && !searchQuery.isEmpty()) {
+            items = new java.util.ArrayList<>();
+            for (VaultStore.VaultItem item : allItems) {
+                String label = item.label != null ? item.label.toLowerCase(java.util.Locale.US) : "";
+                String account = item.account != null ? item.account.toLowerCase(java.util.Locale.US) : "";
+                String note = item.password != null ? item.password.toLowerCase(java.util.Locale.US) : "";
+                String tags = item.optional != null ? item.optional.toLowerCase(java.util.Locale.US) : "";
+                String category = item.category != null ? item.category.toLowerCase(java.util.Locale.US) : "";
+
+                if (label.contains(searchQuery) || account.contains(searchQuery)
+                        || note.contains(searchQuery) || tags.contains(searchQuery)
+                        || category.contains(searchQuery)) {
+                    items.add(item);
+                }
+            }
+        }
 
         // Update badge
         TextView badge = findViewById(R.id.vaultBadge);
-        if (badge != null) badge.setText(String.valueOf(items.size()));
+        if (badge != null) badge.setText(String.valueOf(allItems.size()));
 
         if (items.isEmpty()) {
             entriesScroll.setVisibility(View.GONE);

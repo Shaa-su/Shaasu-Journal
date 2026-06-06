@@ -70,6 +70,11 @@ public class CalendarActivity extends AppCompatActivity {
     private TextView moodBreakdownTotal;
     private LinearLayout moodAllMoodsRow;
 
+    // Stats time range
+    private static final String[] RANGE_OPTIONS = {"Last 7 days", "Last 30 days", "Last 60 days", "Last 90 days", "All time"};
+    private static final int[] RANGE_DAYS = {7, 30, 60, 90, -1};
+    private int selectedRangeIndex = 1; // Default: Last 30 days
+
     private TextView tabStats;
     private TextView tabReminders;
     private TextView tabGoals;
@@ -114,6 +119,10 @@ public class CalendarActivity extends AppCompatActivity {
         yearText = findViewById(R.id.yearText);
 
         moodStatsMonthText = findViewById(R.id.moodStatsMonthText);
+        if (moodStatsMonthText != null) {
+            moodStatsMonthText.setText(RANGE_OPTIONS[selectedRangeIndex] + "  ▼");
+            moodStatsMonthText.setOnClickListener(v -> showRangePicker());
+        }
         moodLoggedBadge = findViewById(R.id.moodLoggedBadge);
         moodFrequencyEmptyText = findViewById(R.id.moodFrequencyEmptyText);
         moodFrequencyList = findViewById(R.id.moodFrequencyList);
@@ -199,6 +208,15 @@ public class CalendarActivity extends AppCompatActivity {
         } else {
             updateCalendar();
         }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // Refresh mood stats whenever returning to this activity
+        int month0 = currentCalendar.get(java.util.Calendar.MONTH);
+        int year = currentCalendar.get(java.util.Calendar.YEAR);
+        updateMoodStats(year, month0);
     }
 
     private void updateCalendar() {
@@ -1189,21 +1207,65 @@ public class CalendarActivity extends AppCompatActivity {
         return Math.round(dp * getResources().getDisplayMetrics().density);
     }
 
+    private void showRangePicker() {
+        android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(this, R.style.ThemeOverlay_App_DarkDialog);
+        builder.setTitle("Select range");
+        builder.setItems(RANGE_OPTIONS, (dialog, which) -> {
+            selectedRangeIndex = which;
+            if (moodStatsMonthText != null) {
+                moodStatsMonthText.setText(RANGE_OPTIONS[which] + "  ▼");
+            }
+            // Recalculate with the same year/month but filtered by range
+            int y = currentCalendar.get(java.util.Calendar.YEAR);
+            int m = currentCalendar.get(java.util.Calendar.MONTH);
+            updateMoodStats(y, m);
+        });
+        builder.setNegativeButton("Cancel", null);
+        builder.show();
+    }
+
     private void updateMoodStats(int year, int month0) {
         String[] months = {"January", "February", "March", "April", "May", "June",
                 "July", "August", "September", "October", "November", "December"};
 
         if (moodStatsMonthText != null) {
-            moodStatsMonthText.setText(months[month0] + " " + year);
+            moodStatsMonthText.setText(RANGE_OPTIONS[selectedRangeIndex] + "  ▼");
         }
 
         SharedPreferences sharedPref = StoryStore.get(this);
 
-        Calendar cal = Calendar.getInstance();
-        cal.set(Calendar.YEAR, year);
-        cal.set(Calendar.MONTH, month0);
-        cal.set(Calendar.DAY_OF_MONTH, 1);
-        int daysInMonth = cal.getActualMaximum(Calendar.DAY_OF_MONTH);
+        // Calculate range start date
+        java.util.Calendar rangeCal = java.util.Calendar.getInstance();
+        int rangeDays = RANGE_DAYS[selectedRangeIndex];
+        if (rangeDays > 0) {
+            rangeCal.add(java.util.Calendar.DAY_OF_YEAR, -rangeDays);
+        } else {
+            // All time — go back far enough (e.g., start of 2020)
+            rangeCal.set(java.util.Calendar.YEAR, 2020);
+            rangeCal.set(java.util.Calendar.MONTH, 0);
+            rangeCal.set(java.util.Calendar.DAY_OF_MONTH, 1);
+        }
+        long rangeStartMs = rangeCal.getTimeInMillis();
+
+        // End date = end of current month (or today if earlier)
+        java.util.Calendar endCal = java.util.Calendar.getInstance();
+        endCal.set(java.util.Calendar.YEAR, year);
+        endCal.set(java.util.Calendar.MONTH, month0);
+        endCal.set(java.util.Calendar.DAY_OF_MONTH, 1);
+        int daysInEndMonth = endCal.getActualMaximum(java.util.Calendar.DAY_OF_MONTH);
+        endCal.set(java.util.Calendar.DAY_OF_MONTH, daysInEndMonth);
+        endCal.set(java.util.Calendar.HOUR_OF_DAY, 23);
+        endCal.set(java.util.Calendar.MINUTE, 59);
+        endCal.set(java.util.Calendar.SECOND, 59);
+        endCal.set(java.util.Calendar.MILLISECOND, 999);
+
+        // Cap at today only for range-based filters (not "All time")
+        java.util.Calendar todayCal = java.util.Calendar.getInstance();
+        if (rangeDays > 0 && endCal.after(todayCal)) {
+            endCal = todayCal;
+        }
+
+        long endMs = endCal.getTimeInMillis();
 
         Map<String, Integer> moodCounts = new HashMap<>();
         int good = 0;
@@ -1211,23 +1273,36 @@ public class CalendarActivity extends AppCompatActivity {
         int bad = 0;
         int totalLogged = 0;
 
-        for (int day = 1; day <= daysInMonth; day++) {
-            String dateKey = year + "-" + String.format("%02d", month0 + 1) + "-" + String.format("%02d", day);
+        // Iterate day by day from rangeStartMs to endCal
+        java.util.Calendar iterCal = java.util.Calendar.getInstance();
+        iterCal.setTimeInMillis(rangeStartMs);
+        iterCal.set(java.util.Calendar.HOUR_OF_DAY, 0);
+        iterCal.set(java.util.Calendar.MINUTE, 0);
+        iterCal.set(java.util.Calendar.SECOND, 0);
+        iterCal.set(java.util.Calendar.MILLISECOND, 0);
+
+        while (iterCal.getTimeInMillis() <= endMs) {
+            int y = iterCal.get(java.util.Calendar.YEAR);
+            int m = iterCal.get(java.util.Calendar.MONTH);
+            int d = iterCal.get(java.util.Calendar.DAY_OF_MONTH);
+
+            String dateKey = y + "-" + String.format("%02d", m + 1) + "-" + String.format("%02d", d);
             String storyData = sharedPref.getString(dateKey, null);
-            if (storyData == null || storyData.isEmpty()) continue;
+            if (storyData != null && !storyData.isEmpty()) {
+                String moodId = extractMoodId(storyData);
+                if (moodId != null && !moodId.trim().isEmpty()) {
+                    Mood mood = Mood.findById(moodId.trim());
+                    if (mood != null) {
+                        totalLogged++;
+                        moodCounts.put(mood.id, (moodCounts.containsKey(mood.id) ? moodCounts.get(mood.id) : 0) + 1);
+                        if (mood.category == Mood.CATEGORY_GOOD) good++;
+                        else if (mood.category == Mood.CATEGORY_NORMAL) normal++;
+                        else bad++;
+                    }
+                }
+            }
 
-            String moodId = extractMoodId(storyData);
-            if (moodId == null || moodId.trim().isEmpty()) continue;
-
-            Mood mood = Mood.findById(moodId.trim());
-            if (mood == null) continue;
-
-            totalLogged++;
-            moodCounts.put(mood.id, (moodCounts.containsKey(mood.id) ? moodCounts.get(mood.id) : 0) + 1);
-
-            if (mood.category == Mood.CATEGORY_GOOD) good++;
-            else if (mood.category == Mood.CATEGORY_NORMAL) normal++;
-            else bad++;
+            iterCal.add(java.util.Calendar.DAY_OF_YEAR, 1);
         }
 
         if (moodLoggedBadge != null) {
@@ -1278,10 +1353,16 @@ public class CalendarActivity extends AppCompatActivity {
                 if (count != null) count.setText(String.valueOf(c));
 
                 float pct = (max > 0) ? (c / (float) max) : 0f;
-                if (fill != null && fill.getLayoutParams() instanceof androidx.constraintlayout.widget.ConstraintLayout.LayoutParams) {
-                    androidx.constraintlayout.widget.ConstraintLayout.LayoutParams lp = (androidx.constraintlayout.widget.ConstraintLayout.LayoutParams) fill.getLayoutParams();
-                    lp.matchConstraintPercentWidth = Math.max(0f, Math.min(1f, pct));
-                    fill.setLayoutParams(lp);
+                if (fill != null) {
+                    View track = row.findViewById(R.id.freqBarTrack);
+                    if (track != null) {
+                        track.post(() -> {
+                            int trackWidth = track.getWidth();
+                            int fillWidth = Math.round(trackWidth * Math.max(0f, Math.min(1f, pct)));
+                            fill.getLayoutParams().width = fillWidth;
+                            fill.requestLayout();
+                        });
+                    }
                 }
 
                 moodFrequencyList.addView(row);
@@ -1318,6 +1399,52 @@ public class CalendarActivity extends AppCompatActivity {
 
                 moodAllMoodsRow.addView(cell);
             }
+        }
+
+        // Mood bar chart
+        MoodBarChartView barChart = findViewById(R.id.moodBarChart);
+        if (barChart != null) {
+            barChart.setMoodData(Mood.all(), moodCounts);
+        }
+
+        // Best Day in Weeks chart
+        int[] goodByDay = new int[7];
+        int[] otherByDay = new int[7];
+        java.util.Calendar iterCal2 = java.util.Calendar.getInstance();
+        iterCal2.setTimeInMillis(rangeStartMs);
+        iterCal2.set(java.util.Calendar.HOUR_OF_DAY, 0);
+        iterCal2.set(java.util.Calendar.MINUTE, 0);
+        iterCal2.set(java.util.Calendar.SECOND, 0);
+        iterCal2.set(java.util.Calendar.MILLISECOND, 0);
+
+        while (iterCal2.getTimeInMillis() <= endMs) {
+            int y = iterCal2.get(java.util.Calendar.YEAR);
+            int m = iterCal2.get(java.util.Calendar.MONTH);
+            int d = iterCal2.get(java.util.Calendar.DAY_OF_MONTH);
+
+            String dateKey = y + "-" + String.format("%02d", m + 1) + "-" + String.format("%02d", d);
+            String storyData = sharedPref.getString(dateKey, null);
+            if (storyData != null && !storyData.isEmpty()) {
+                String moodId = extractMoodId(storyData);
+                if (moodId != null && !moodId.trim().isEmpty()) {
+                    Mood mood = Mood.findById(moodId.trim());
+                    if (mood != null) {
+                        int dayOfWeek = iterCal2.get(java.util.Calendar.DAY_OF_WEEK) - 1;
+                        if (mood.category == Mood.CATEGORY_GOOD) {
+                            goodByDay[dayOfWeek]++;
+                        } else {
+                            otherByDay[dayOfWeek]++;
+                        }
+                    }
+                }
+            }
+
+            iterCal2.add(java.util.Calendar.DAY_OF_YEAR, 1);
+        }
+        BestDayChartView bestDayChart = findViewById(R.id.bestDayChart);
+        if (bestDayChart != null) {
+            bestDayChart.setData(goodByDay, otherByDay);
+            bestDayChart.postInvalidate();
         }
     }
 
