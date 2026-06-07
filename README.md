@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="assets/banner.svg" alt="Shaasu Story Banner" width="100%"/>
+  <img src="assets/banner.svg" alt="Shaasu Journal Banner" width="100%"/>
   <p>A private, offline Android journaling app</p>
 </div>
 
