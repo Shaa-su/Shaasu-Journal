@@ -8,7 +8,7 @@
 ![Platform](https://img.shields.io/badge/Platform-Android-green)
 ![Language](https://img.shields.io/badge/Language-Java-orange)
 ![Status](https://img.shields.io/badge/Status-In%20Development-blue)
-![License](https://img.shields.io/badge/License-Private-red)
+![License](https://img.shields.io/badge/License-MIT-19BFAE)
 
 A private, offline Android journaling app with mood tracking, goals, and rich story entries.
 
@@ -98,4 +98,6 @@ A private, offline Android journaling app with mood tracking, goals, and rich st
 ---
 
 ## License
-Private — all rights reserved.
+MIT License — use it, change it, build on it. Just keep my name on it. If something breaks, that's on you.
+
+© 2026 Don Maglalang
